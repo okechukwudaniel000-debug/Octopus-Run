@@ -50,11 +50,12 @@ interface Collectible {
   bobOffset: number;
 }
 
-// Module-level physics constants
+// Module-level physics and runner constants
 const TILE_SIZE = 24;
 const GRAVITY = 0.58;
-const MOVE_SPEED = 4.2;
 const JUMP_FORCE = -11.4;
+const SCROLL_SPEED = 2.6; // Continuous forward camera speed
+const MOVE_SPEED = 3.2;   // Relative player adjust speed
 
 export default function OctoPlatformerGame({
   onOpenCodeViewer,
@@ -215,15 +216,18 @@ export default function OctoPlatformerGame({
 
   // Game Engine State Refs
   const gameStateRef = useRef({
+    gameStarted: false,
     score: 0,
     lives: 3,
     isGameOver: false,
     screenShake: 0,
     frameCount: 0,
+    maxGeneratedX: 0,
+    chunkPatternIndex: 0,
     camera: { x: 0, y: 0 },
     player: {
-      x: 120,
-      y: 180,
+      x: 160,
+      y: 17 * TILE_SIZE - 38,
       width: 32,
       height: 38,
       vx: 0,
@@ -234,8 +238,8 @@ export default function OctoPlatformerGame({
       walkFrame: 0,
       rainbowTimer: 0,
       companion: {
-        x: 90,
-        y: 170,
+        x: 130,
+        y: 17 * TILE_SIZE - 38,
         active: false,
       },
     },
@@ -251,13 +255,11 @@ export default function OctoPlatformerGame({
     },
   });
 
-  const buildWorld = useCallback(() => {
+  const generateChunk = useCallback(() => {
     const state = gameStateRef.current;
-    state.platforms = [];
-    state.enemies = [];
-    state.collectibles = [];
-    state.floatingTexts = [];
-    state.particles = [];
+    const startG = Math.floor(state.maxGeneratedX / TILE_SIZE);
+    const pattern = state.chunkPatternIndex % 6;
+    state.chunkPatternIndex++;
 
     const addP = (gx: number, gy: number, gw: number, gh = 1) => {
       state.platforms.push({
@@ -270,7 +272,7 @@ export default function OctoPlatformerGame({
 
     const addBug = (gx: number, gy: number, rangeW: number) => {
       state.enemies.push({
-        x: gx * TILE_SIZE,
+        x: gx * TILE_SIZE + 4,
         y: gy * TILE_SIZE - 20,
         width: 28,
         height: 20,
@@ -285,117 +287,152 @@ export default function OctoPlatformerGame({
     const addC = (gx: number, gy: number, type: Collectible['type'] = 'yellow') => {
       state.collectibles.push({
         x: gx * TILE_SIZE + 4,
-        y: gy * TILE_SIZE - 20,
+        y: gy * TILE_SIZE - 22,
         width: 16,
         height: 16,
-        baseY: gy * TILE_SIZE - 20,
+        baseY: gy * TILE_SIZE - 22,
         type,
         collected: false,
         bobOffset: Math.random() * Math.PI * 2,
       });
     };
 
-    // SECTION 1: Starting tiers (Matches video 00:00 - 00:20)
-    addP(2, 17, 12);
-    addP(15, 15, 5);
-    addP(21, 13, 6);
-    addP(28, 11, 8);
-    addP(37, 13, 6);
-    addP(44, 15, 6);
-
-    addBug(29, 11, 7);
-    addBug(45, 15, 5);
-
-    addC(22, 12, 'yellow');
-    addC(31, 10, 'orange');
-    addC(35, 10, 'purple');
-    addC(40, 12, 'yellow');
-    addC(47, 14, 'orange');
-
-    // SECTION 2: Floating ledges & Golden Chick (00:20 - 00:50)
-    addP(52, 16, 7);
-    addP(61, 14, 5);
-    addP(67, 12, 9);
-    addP(78, 10, 8);
-    addP(88, 12, 10);
-    addP(68, 18, 8);
-    addP(78, 20, 9);
-
-    addC(54, 15, 'chick');
-    addC(63, 13, 'green');
-    addC(70, 11, 'quad');
-    addC(73, 11, 'blue');
-    addC(80, 9, 'purple');
-    addC(84, 9, 'yellow');
-
-    addBug(68, 12, 8);
-    addBug(79, 10, 7);
-    addBug(69, 18, 7);
-
-    // SECTION 3: Rainbow Companion Altar (00:55 - 01:15)
-    addP(100, 13, 6);
-    addP(108, 11, 5);
-    addP(115, 8, 8);
-    addP(125, 10, 7);
-    addP(134, 13, 9);
-    addP(103, 18, 12);
-    addP(118, 19, 14);
-
-    addC(119, 7, 'rainbow');
-    addC(116, 7, 'blue');
-    addC(122, 7, 'quad');
-    addC(102, 12, 'yellow');
-    addC(110, 10, 'orange');
-    addC(128, 9, 'purple');
-    addC(136, 12, 'yellow');
-    addC(140, 12, 'green');
-
-    addBug(109, 11, 4);
-    addBug(126, 10, 6);
-    addBug(105, 18, 10);
-    addBug(120, 19, 12);
-
-    // SECTION 4: Gauntlet & High Route (01:15 - 01:35)
-    addP(145, 14, 5);
-    addP(152, 12, 6);
-    addP(160, 10, 7);
-    addP(169, 8, 10);
-    addP(181, 10, 6);
-    addP(189, 13, 8);
-    addP(199, 15, 12);
-    addP(155, 18, 14);
-    addP(173, 19, 15);
-
-    addC(153, 11, 'orange');
-    addC(162, 9, 'purple');
-    addC(172, 7, 'chick');
-    addC(174, 7, 'blue');
-    addC(176, 7, 'quad');
-    addC(183, 9, 'purple');
-    addC(192, 12, 'yellow');
-    addC(202, 14, 'quad');
-
-    addBug(153, 12, 5);
-    addBug(161, 10, 6);
-    addBug(170, 8, 9);
-    addBug(190, 13, 7);
-    addBug(157, 18, 12);
-    addBug(175, 19, 13);
-
-    // Looping extension
-    addP(213, 16, 14);
-    addC(215, 15, 'rainbow');
+    if (pattern === 0) {
+      addP(startG, 17, 8);
+      addP(startG + 10, 15, 6);
+      addP(startG + 18, 13, 8);
+      addBug(startG + 19, 13, 6);
+      addC(startG + 3, 16, 'yellow');
+      addC(startG + 12, 14, 'orange');
+      addC(startG + 22, 12, 'purple');
+      addC(startG + 24, 12, 'yellow');
+      state.maxGeneratedX = (startG + 28) * TILE_SIZE;
+    } else if (pattern === 1) {
+      addP(startG + 2, 18, 10);
+      addP(startG + 4, 12, 7);
+      addP(startG + 13, 10, 6);
+      addP(startG + 14, 18, 9);
+      addBug(startG + 4, 18, 7);
+      addBug(startG + 15, 18, 7);
+      addC(startG + 6, 11, 'quad');
+      addC(startG + 15, 9, 'blue');
+      addC(startG + 17, 9, 'chick');
+      state.maxGeneratedX = (startG + 25) * TILE_SIZE;
+    } else if (pattern === 2) {
+      addP(startG + 2, 16, 5);
+      addP(startG + 9, 15, 5);
+      addP(startG + 16, 14, 5);
+      addP(startG + 23, 16, 6);
+      addBug(startG + 10, 15, 3);
+      addBug(startG + 24, 16, 4);
+      addC(startG + 4, 15, 'orange');
+      addC(startG + 11, 14, 'purple');
+      addC(startG + 18, 13, 'blue');
+      state.maxGeneratedX = (startG + 31) * TILE_SIZE;
+    } else if (pattern === 3) {
+      addP(startG + 2, 16, 8);
+      addP(startG + 12, 11, 7);
+      addP(startG + 11, 18, 12);
+      addC(startG + 15, 10, 'rainbow');
+      addC(startG + 13, 10, 'blue');
+      addC(startG + 17, 10, 'quad');
+      addBug(startG + 13, 18, 8);
+      state.maxGeneratedX = (startG + 25) * TILE_SIZE;
+    } else if (pattern === 4) {
+      addP(startG + 2, 17, 18);
+      addP(startG + 7, 13, 5);
+      addP(startG + 14, 13, 5);
+      addBug(startG + 4, 17, 6);
+      addBug(startG + 12, 17, 6);
+      addC(startG + 8, 12, 'yellow');
+      addC(startG + 15, 12, 'orange');
+      addC(startG + 19, 16, 'green');
+      state.maxGeneratedX = (startG + 22) * TILE_SIZE;
+    } else {
+      addP(startG + 2, 12, 6);
+      addP(startG + 10, 14, 5);
+      addP(startG + 17, 16, 6);
+      addP(startG + 25, 17, 8);
+      addBug(startG + 18, 16, 4);
+      addBug(startG + 26, 17, 6);
+      addC(startG + 4, 11, 'chick');
+      addC(startG + 12, 13, 'purple');
+      addC(startG + 28, 16, 'quad');
+      state.maxGeneratedX = (startG + 35) * TILE_SIZE;
+    }
   }, []);
+
+  const buildInitialWorld = useCallback(() => {
+    const state = gameStateRef.current;
+    state.platforms = [];
+    state.enemies = [];
+    state.collectibles = [];
+    state.floatingTexts = [];
+    state.particles = [];
+    state.maxGeneratedX = 0;
+    state.chunkPatternIndex = 0;
+
+    const addP = (gx: number, gy: number, gw: number, gh = 1) => {
+      state.platforms.push({
+        x: gx * TILE_SIZE,
+        y: gy * TILE_SIZE,
+        w: gw * TILE_SIZE,
+        h: gh * TILE_SIZE,
+      });
+    };
+
+    const addBug = (gx: number, gy: number, rangeW: number) => {
+      state.enemies.push({
+        x: gx * TILE_SIZE + 4,
+        y: gy * TILE_SIZE - 20,
+        width: 28,
+        height: 20,
+        vx: 1.25,
+        minX: gx * TILE_SIZE,
+        maxX: (gx + rangeW) * TILE_SIZE - 28,
+        animFrame: 0,
+        dead: false,
+      });
+    };
+
+    const addC = (gx: number, gy: number, type: Collectible['type'] = 'yellow') => {
+      state.collectibles.push({
+        x: gx * TILE_SIZE + 4,
+        y: gy * TILE_SIZE - 22,
+        width: 16,
+        height: 16,
+        baseY: gy * TILE_SIZE - 22,
+        type,
+        collected: false,
+        bobOffset: Math.random() * Math.PI * 2,
+      });
+    };
+
+    // Safe starting runway
+    addP(0, 17, 24);
+    addC(6, 16, 'yellow');
+    addC(10, 16, 'orange');
+    addC(14, 16, 'yellow');
+    addBug(16, 17, 7);
+    addC(19, 16, 'purple');
+    state.maxGeneratedX = 26 * TILE_SIZE;
+
+    // Pre-populate chunks ahead
+    for (let i = 0; i < 4; i++) {
+      generateChunk();
+    }
+  }, [generateChunk]);
 
   const resetGame = useCallback(() => {
     const state = gameStateRef.current;
     state.score = 0;
     state.lives = 3;
     state.isGameOver = false;
+    state.gameStarted = false;
     state.screenShake = 0;
     state.camera = { x: 0, y: 0 };
-    state.player.x = 120;
-    state.player.y = 180;
+    state.player.x = 160;
+    state.player.y = 17 * TILE_SIZE - 38;
     state.player.vx = 0;
     state.player.vy = 0;
     state.player.facing = 1;
@@ -408,23 +445,31 @@ export default function OctoPlatformerGame({
     setIsGameOver(false);
     setIsRainbowActive(false);
 
-    buildWorld();
-  }, [buildWorld]);
+    buildInitialWorld();
+  }, [buildInitialWorld]);
+
+  const triggerStart = useCallback(() => {
+    if (!gameStateRef.current.gameStarted) {
+      gameStateRef.current.gameStarted = true;
+    }
+  }, []);
 
   const handleJump = useCallback(() => {
     const state = gameStateRef.current;
     if (state.isGameOver) return;
+    triggerStart();
     if (state.player.onGround) {
       state.player.vy = JUMP_FORCE;
       state.player.onGround = false;
       playSound('jump');
     }
-  }, [playSound]);
+  }, [playSound, triggerStart]);
 
   // Handle Keyboard inputs
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       initAudio();
+      triggerStart();
       const state = gameStateRef.current;
       if (e.code === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
         state.keys.left = true;
@@ -456,7 +501,7 @@ export default function OctoPlatformerGame({
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
     };
-  }, [handleJump, initAudio]);
+  }, [handleJump, initAudio, triggerStart]);
 
   // Main Canvas Loop
   useEffect(() => {
@@ -522,7 +567,28 @@ export default function OctoPlatformerGame({
           }
         }
 
-        // Horizontal movement
+        // CONTINUOUS CAMERA MOTION AUTO-SCROLL
+        // As soon as the player initiates motion, the camera keeps moving forward continuously
+        if (state.gameStarted) {
+          state.camera.x += SCROLL_SPEED;
+          state.player.x += SCROLL_SPEED; // Carry player forward with camera
+          state.player.walkFrame++;
+        }
+
+        // Generate procedural chunks ahead of screen
+        if (state.camera.x + cvs.width + 800 > state.maxGeneratedX) {
+          generateChunk();
+        }
+
+        // Garbage collect off-screen entities
+        if (state.frameCount % 90 === 0) {
+          const discardX = state.camera.x - 300;
+          state.platforms = state.platforms.filter((p) => p.x + p.w > discardX);
+          state.enemies = state.enemies.filter((b) => b.x + b.width > discardX);
+          state.collectibles = state.collectibles.filter((c) => c.x + c.width > discardX);
+        }
+
+        // Horizontal steer (adjust forward / backward on screen)
         if (state.keys.left) {
           state.player.vx = -MOVE_SPEED;
           state.player.facing = -1;
@@ -534,14 +600,24 @@ export default function OctoPlatformerGame({
         } else {
           state.player.vx *= 0.65;
           if (Math.abs(state.player.vx) < 0.1) state.player.vx = 0;
+          if (state.gameStarted) state.player.facing = 1;
         }
 
         // Gravity
         state.player.vy += GRAVITY;
         if (state.player.vy > 12) state.player.vy = 12;
 
-        // X collision with platforms
+        // Apply X steering and screen clamping
         state.player.x += state.player.vx;
+
+        const minScreenX = state.camera.x + 16;
+        const maxScreenX = state.camera.x + cvs.width - 54;
+        if (state.player.x < minScreenX) {
+          state.player.x = minScreenX;
+        } else if (state.player.x > maxScreenX) {
+          state.player.x = maxScreenX;
+        }
+
         for (const p of state.platforms) {
           if (checkAABB(state.player, p)) {
             if (state.player.vx > 0) {
@@ -549,7 +625,6 @@ export default function OctoPlatformerGame({
             } else if (state.player.vx < 0) {
               state.player.x = p.x + p.w;
             }
-            state.player.vx = 0;
           }
         }
 
@@ -570,13 +645,14 @@ export default function OctoPlatformerGame({
           }
         }
 
-        // Pit fall death
-        if (state.player.y > 680) {
+        // Pit fall death / off-screen bottom
+        if (state.player.y > cvs.height + 40 || state.player.y > 660) {
           state.lives--;
           setLives(state.lives);
           playSound('damage');
           state.screenShake = 16;
-          state.player.invulnerableTimer = 100;
+          state.player.invulnerableTimer = 110;
+
           if (state.lives <= 0) {
             state.isGameOver = true;
             setFinalScore(state.score);
@@ -588,8 +664,17 @@ export default function OctoPlatformerGame({
               return nh;
             });
           } else {
-            state.player.x = Math.max(120, state.player.x - 220);
-            state.player.y = 140;
+            // Respawn on nearest visible platform on screen
+            const visibleP = state.platforms.find(
+              (p) => p.x > state.camera.x + 80 && p.x < state.camera.x + cvs.width * 0.7
+            );
+            if (visibleP) {
+              state.player.x = visibleP.x + 30;
+              state.player.y = visibleP.y - state.player.height - 15;
+            } else {
+              state.player.x = state.camera.x + 180;
+              state.player.y = 16 * TILE_SIZE - state.player.height;
+            }
             state.player.vy = 0;
           }
         }
@@ -651,7 +736,6 @@ export default function OctoPlatformerGame({
               state.screenShake = 16;
               state.player.invulnerableTimer = 110;
               state.player.vy = -6;
-              state.player.vx = -state.player.facing * 4;
 
               if (state.lives <= 0) {
                 state.isGameOver = true;
@@ -710,7 +794,7 @@ export default function OctoPlatformerGame({
           }
         }
 
-        // Update Floating Texts
+        // Floating texts
         for (let i = state.floatingTexts.length - 1; i >= 0; i--) {
           const ft = state.floatingTexts[i];
           ft.y -= 1.1;
@@ -720,7 +804,7 @@ export default function OctoPlatformerGame({
           }
         }
 
-        // Update Particles
+        // Particles
         for (let i = state.particles.length - 1; i >= 0; i--) {
           const p = state.particles[i];
           p.x += p.vx;
@@ -730,18 +814,9 @@ export default function OctoPlatformerGame({
             state.particles.splice(i, 1);
           }
         }
-
-        // Camera Tracking
-        const targetCamX = state.player.x - cvs.width * 0.35;
-        state.camera.x += (targetCamX - state.camera.x) * 0.08;
-        if (state.camera.x < 0) state.camera.x = 0;
-
-        const targetCamY = state.player.y - cvs.height * 0.55;
-        state.camera.y += (targetCamY - state.camera.y) * 0.05;
-        if (state.camera.y < -40) state.camera.y = -40;
       }
 
-      // --- DRAWING PIPELINE ---
+      // --- RENDERING PIPELINE ---
       ctx.clearRect(0, 0, cvs.width, cvs.height);
       ctx.save();
 
@@ -749,7 +824,7 @@ export default function OctoPlatformerGame({
         ctx.translate((Math.random() - 0.5) * state.screenShake, (Math.random() - 0.5) * state.screenShake);
       }
 
-      // 1. Engineering grid
+      // Technical Grid background
       const gridSize = TILE_SIZE;
       const offsetX = -(state.camera.x % gridSize);
       const offsetY = -(state.camera.y % gridSize);
@@ -767,7 +842,7 @@ export default function OctoPlatformerGame({
       }
       ctx.stroke();
 
-      // 2. Camera Transform
+      // Camera Transform
       ctx.save();
       ctx.translate(-Math.round(state.camera.x), -Math.round(state.camera.y));
 
@@ -866,7 +941,7 @@ export default function OctoPlatformerGame({
         ctx.restore();
       }
 
-      // Enemies
+      // Enemies (Bugs)
       for (const bug of state.enemies) {
         if (bug.dead) continue;
         ctx.save();
@@ -1026,14 +1101,14 @@ export default function OctoPlatformerGame({
       ctx.fillRect(-7, headY + 10, 14, 8);
 
       const legY = headY + 18;
-      const isMoving = Math.abs(p.vx) > 0.2 && p.onGround;
+      const isMoving = (state.gameStarted || Math.abs(p.vx) > 0.1) && p.onGround;
 
       for (let i = 0; i < 4; i++) {
         const tOffset = (i - 1.5) * 4;
         let legH = 8;
         let bend = 0;
         if (isMoving) {
-          bend = Math.sin(p.walkFrame * 0.4 + i * 1.5) * 4.5;
+          bend = Math.sin(p.walkFrame * 0.35 + i * 1.5) * 4.5;
         } else if (!p.onGround) {
           bend = i < 2 ? -2 : 3;
           legH = 6;
@@ -1068,14 +1143,14 @@ export default function OctoPlatformerGame({
       cancelAnimationFrame(animId);
       window.removeEventListener('resize', resize);
     };
-  }, [playSound, resetGame]);
+  }, [generateChunk, playSound, resetGame]);
 
   return (
     <div
       ref={containerRef}
       className="relative w-full h-full overflow-hidden bg-[#f4f4f4] select-none font-sans"
     >
-      {/* Top decorative purple band matching the video frame */}
+      {/* Top decorative purple band */}
       <div className="absolute top-0 left-0 w-full h-[12px] bg-gradient-to-r from-purple-600 via-fuchsia-500 to-indigo-600 z-20 pointer-events-none" />
 
       {/* Rainbow Active Banner */}
@@ -1124,12 +1199,12 @@ export default function OctoPlatformerGame({
             <span className="inline-flex items-center justify-center bg-white border border-slate-300 border-b-2 border-b-slate-400 rounded px-1.5 py-0.5 font-bold text-[11px] text-slate-800 min-w-5">
               →
             </span>
-            <span className="text-slate-600">move</span>
+            <span className="text-slate-600">adjust</span>
             <span className="text-slate-300">|</span>
             <span className="inline-flex items-center justify-center bg-white border border-slate-300 border-b-2 border-b-slate-400 rounded px-2 py-0.5 font-bold text-[11px] text-slate-800">
               Space
             </span>
-            <span className="text-slate-600">jump</span>
+            <span className="text-slate-600">jump traps</span>
           </div>
 
           {/* Score Counter & Controls Bar */}
@@ -1218,6 +1293,7 @@ export default function OctoPlatformerGame({
           <button
             onPointerDown={() => {
               initAudio();
+              triggerStart();
               gameStateRef.current.keys.left = true;
             }}
             onPointerUp={() => {
@@ -1233,6 +1309,7 @@ export default function OctoPlatformerGame({
           <button
             onPointerDown={() => {
               initAudio();
+              triggerStart();
               gameStateRef.current.keys.right = true;
             }}
             onPointerUp={() => {
@@ -1263,12 +1340,10 @@ export default function OctoPlatformerGame({
         </div>
       </div>
 
-      {/* Game Over Screen Modal (Matches video 01:35) */}
+      {/* Game Over Screen Modal */}
       {isGameOver && (
         <div className="absolute inset-0 bg-[#f4f4f4]/80 backdrop-blur-xs flex flex-col items-center justify-center z-30 animate-in fade-in duration-300">
-          {/* Centered Score Card */}
           <div className="bg-white border border-slate-300 rounded-2xl p-6 sm:p-8 text-center shadow-xl mb-6 flex flex-col items-center min-w-[240px] transform transition-transform animate-in zoom-in-95 duration-200">
-            {/* Octocat avatar with rainbow companion */}
             <svg className="w-16 h-12 mb-2" viewBox="0 0 80 50">
               <rect x="18" y="4" width="22" height="6" fill="#ec4899" rx="2" />
               <rect x="16" y="10" width="26" height="6" fill="#8b5cf6" rx="2" />
@@ -1301,7 +1376,6 @@ export default function OctoPlatformerGame({
             )}
           </div>
 
-          {/* Blocky "GAME OVER" text */}
           <h2 className="font-mono text-4xl sm:text-6xl font-black text-slate-700 tracking-[0.25em] sm:tracking-[0.35em] uppercase mb-8 drop-shadow-xs select-none">
             GAME OVER
           </h2>
