@@ -411,7 +411,7 @@
           <span>adjust</span>
           <span style="color:#d0d7de">|</span>
           <span class="key-badge">Space</span>
-          <span>jump traps</span>
+          <span>multi-jump (x3)</span>
         </div>
 
         <div class="hud-score-panel">
@@ -489,7 +489,7 @@
      * OctoRun - 2D Grid Continuous Auto-Scroller Platformer
      * Continuous camera motion platformer with Web Audio API,
      * procedural endless chunk generation, crawling bug traps,
-     * rainbow companion powerup, and pixel-art rendering.
+     * multi-jump mechanic, and pixel-art rendering.
      */
     (function () {
       'use strict';
@@ -519,7 +519,7 @@
           return this.muted;
         }
 
-        playJump() {
+        playJump(jumpNum = 1) {
           if (this.muted) return;
           this.init();
           if (!this.ctx) return;
@@ -529,8 +529,11 @@
           const gain = this.ctx.createGain();
 
           osc.type = 'square';
-          osc.frequency.setValueAtTime(150, now);
-          osc.frequency.exponentialRampToValueAtTime(520, now + 0.12);
+          // Ascending pitch for consecutive multi-jumps (1st, 2nd, 3rd)
+          const startF = jumpNum === 3 ? 300 : jumpNum === 2 ? 220 : 150;
+          const endF = jumpNum === 3 ? 800 : jumpNum === 2 ? 650 : 520;
+          osc.frequency.setValueAtTime(startF, now);
+          osc.frequency.exponentialRampToValueAtTime(endF, now + 0.12);
 
           gain.gain.setValueAtTime(0.08, now);
           gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
@@ -680,6 +683,7 @@
       const SCROLL_SPEED = 2.6; // Continuous forward auto-scroll speed
       const MOVE_SPEED = 3.2;   // Relative player adjust speed
       const MAX_LIVES = 3;
+      const MAX_JUMPS = 3;      // Allow jumping up to 3 times before hitting the ground
 
       // --- DOM REFERENCES ---
       const canvas = document.getElementById('gameCanvas');
@@ -830,6 +834,7 @@
         vy: 0,
         facing: 1,
         onGround: false,
+        jumpCount: 0, // Number of jumps before landing
         invulnerableTimer: 0,
         walkFrame: 0,
         rainbowTimer: 0,
@@ -840,7 +845,6 @@
         }
       };
 
-      // Helper to add platform in grid units
       function addP(gx, gy, gw, gh = 1) {
         platforms.push({
           x: gx * TILE_SIZE,
@@ -885,7 +889,6 @@
         chunkPatternIndex++;
 
         if (pattern === 0) {
-          // Ascending staircase terrace with bug trap & gems
           addP(startG, 17, 8);
           addP(startG + 10, 15, 6);
           addP(startG + 18, 13, 8);
@@ -896,7 +899,6 @@
           addC(startG + 24, 12, 'yellow');
           maxGeneratedX = (startG + 28) * TILE_SIZE;
         } else if (pattern === 1) {
-          // Double split: high secret path with quad block + lower bridge with bug
           addP(startG + 2, 18, 10);
           addP(startG + 4, 12, 7);
           addP(startG + 13, 10, 6);
@@ -905,10 +907,9 @@
           addBug(startG + 15, 18, 7);
           addC(startG + 6, 11, 'quad');
           addC(startG + 15, 9, 'blue');
-          addC(startG + 17, 9, 'chick'); // Golden duckling easter egg
+          addC(startG + 17, 9, 'chick');
           maxGeneratedX = (startG + 25) * TILE_SIZE;
         } else if (pattern === 2) {
-          // Stepping stone gap hurdles with bugs in between
           addP(startG + 2, 16, 5);
           addP(startG + 9, 15, 5);
           addP(startG + 16, 14, 5);
@@ -920,17 +921,15 @@
           addC(startG + 18, 13, 'blue');
           maxGeneratedX = (startG + 31) * TILE_SIZE;
         } else if (pattern === 3) {
-          // Rainbow Companion Shrine segment!
           addP(startG + 2, 16, 8);
-          addP(startG + 12, 11, 7); // High shrine altar
+          addP(startG + 12, 11, 7);
           addP(startG + 11, 18, 12);
-          addC(startG + 15, 10, 'rainbow'); // Rainbow companion!
+          addC(startG + 15, 10, 'rainbow');
           addC(startG + 13, 10, 'blue');
           addC(startG + 17, 10, 'quad');
           addBug(startG + 13, 18, 8);
           maxGeneratedX = (startG + 25) * TILE_SIZE;
         } else if (pattern === 4) {
-          // Long speed runway with alternating bug patrols
           addP(startG + 2, 17, 18);
           addP(startG + 7, 13, 5);
           addP(startG + 14, 13, 5);
@@ -941,7 +940,6 @@
           addC(startG + 19, 16, 'green');
           maxGeneratedX = (startG + 22) * TILE_SIZE;
         } else {
-          // High cliff drop and recovery ledges
           addP(startG + 2, 12, 6);
           addP(startG + 10, 14, 5);
           addP(startG + 17, 16, 6);
@@ -964,16 +962,14 @@
         maxGeneratedX = 0;
         chunkPatternIndex = 0;
 
-        // Long initial safe runway (start)
         addP(0, 17, 24);
         addC(6, 16, 'yellow');
         addC(10, 16, 'orange');
         addC(14, 16, 'yellow');
-        addBug(16, 17, 7); // First bug trap to jump over
+        addBug(16, 17, 7);
         addC(19, 16, 'purple');
         maxGeneratedX = 26 * TILE_SIZE;
 
-        // Pre-generate several chunks ahead
         for (let i = 0; i < 4; i++) {
           generateNextChunk();
         }
@@ -985,6 +981,7 @@
         player.vx = 0;
         player.vy = 0;
         player.facing = 1;
+        player.jumpCount = 0;
         player.invulnerableTimer = 90;
         player.rainbowTimer = 0;
         player.companion.active = false;
@@ -1005,25 +1002,63 @@
         resetPlayer();
       }
 
+      // Multi-jump handler
       function handleJumpAction() {
         if (isGameOver) return;
         triggerGameStart();
-        if (player.onGround) {
-          player.vy = JUMP_FORCE;
+
+        if (player.jumpCount < MAX_JUMPS) {
+          player.jumpCount++;
           player.onGround = false;
-          sounds.playJump();
+
+          if (player.jumpCount === 1) {
+            // First jump
+            player.vy = JUMP_FORCE;
+            sounds.playJump(1);
+          } else if (player.jumpCount === 2) {
+            // Second jump: goes up a little bit more!
+            player.vy = Math.min(-9.2, JUMP_FORCE * 0.85);
+            sounds.playJump(2);
+            for (let i = 0; i < 5; i++) {
+              particles.push({
+                x: player.x + player.width / 2 + (Math.random() - 0.5) * 16,
+                y: player.y + player.height,
+                vx: (Math.random() - 0.5) * 2,
+                vy: Math.random() * 2 + 1,
+                color: '#94a3b8',
+                size: 2.5,
+                life: 14
+              });
+            }
+          } else {
+            // Third jump: flutter lift
+            player.vy = Math.min(-8.4, JUMP_FORCE * 0.76);
+            sounds.playJump(3);
+            for (let i = 0; i < 6; i++) {
+              particles.push({
+                x: player.x + player.width / 2 + (Math.random() - 0.5) * 18,
+                y: player.y + player.height,
+                vx: (Math.random() - 0.5) * 2.5,
+                vy: Math.random() * 2 + 1,
+                color: '#64748b',
+                size: 3,
+                life: 16
+              });
+            }
+          }
         }
       }
 
       function triggerDamage() {
         if (player.invulnerableTimer > 0 || isGameOver) return;
-        if (player.rainbowTimer > 0) return; // Rainbow shield
+        if (player.rainbowTimer > 0) return;
 
         lives--;
         renderHearts();
         sounds.playDamage();
         screenShake = 16;
         player.invulnerableTimer = 110;
+        player.jumpCount = 0;
 
         if (lives <= 0) {
           triggerGameOver();
@@ -1086,7 +1121,6 @@
 
         const headY = -8;
 
-        // Cat Ears
         ctx.fillStyle = '#181717';
         ctx.beginPath();
         ctx.moveTo(-11, headY - 4); ctx.lineTo(-8, headY - 17); ctx.lineTo(-2, headY - 7);
@@ -1099,35 +1133,29 @@
         ctx.moveTo(9, headY - 5); ctx.lineTo(7, headY - 14); ctx.lineTo(3, headY - 7);
         ctx.fill();
 
-        // Head
         ctx.fillStyle = '#181717';
         ctx.beginPath();
         ctx.arc(0, headY, 13.5, 0, Math.PI * 2);
         ctx.fill();
 
-        // Face Mask
         ctx.fillStyle = '#ffffff';
         ctx.beginPath();
         ctx.ellipse(1, headY + 1.5, 9, 7.5, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        // Eyes
         ctx.fillStyle = '#181717';
         ctx.beginPath();
         ctx.ellipse(-2.5, headY + 1, 1.8, 2.5, 0, 0, Math.PI * 2);
         ctx.ellipse(4.5, headY + 1, 1.8, 2.5, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        // Glints
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(-2, headY - 0.5, 1, 1.2);
         ctx.fillRect(5, headY - 0.5, 1, 1.2);
 
-        // Nose
         ctx.fillStyle = '#181717';
         ctx.fillRect(1, headY + 4, 1.5, 1.2);
 
-        // Whiskers
         ctx.strokeStyle = '#181717';
         ctx.lineWidth = 1;
         ctx.beginPath();
@@ -1137,11 +1165,9 @@
         ctx.moveTo(9, headY + 4); ctx.lineTo(14, headY + 5);
         ctx.stroke();
 
-        // Torso
         ctx.fillStyle = '#181717';
         ctx.fillRect(-7, headY + 10, 14, 8);
 
-        // Tentacles / Legs
         const legY = headY + 18;
         const isMoving = (gameStarted || Math.abs(p.vx) > 0.1) && p.onGround;
 
@@ -1263,7 +1289,8 @@
 
           ctx.fillStyle = '#f97316';
           ctx.beginPath();
-          ctx.moveTo(15, 3); ctx.lineTo(19, 5); ctx.lineTo(15, 7);
+          ctx.moveTo(15, 3); ctx.lineTo(19, 5);
+          ctx.lineTo(15, 7);
           ctx.fill();
 
           ctx.fillStyle = '#111827';
@@ -1381,19 +1408,18 @@
         }
 
         // 3. CONTINUOUS CAMERA AUTO-SCROLL
-        // Once started, camera is in continuous motion to the right
         if (gameStarted) {
           camera.x += SCROLL_SPEED;
-          player.x += SCROLL_SPEED; // Carry player forward at scroll speed
+          player.x += SCROLL_SPEED;
           player.walkFrame++;
         }
 
-        // Check if we need to generate more chunks ahead
+        // Generate chunks ahead
         if (camera.x + canvas.width + 800 > maxGeneratedX) {
           generateNextChunk();
         }
 
-        // Garbage collect entities far behind camera
+        // Garbage collect off-screen entities
         if (frameCount % 90 === 0) {
           const discardX = camera.x - 300;
           platforms = platforms.filter(p => p.x + p.w > discardX);
@@ -1401,7 +1427,7 @@
           collectibles = collectibles.filter(c => c.x + c.width > discardX);
         }
 
-        // 4. Player Horizontal Steer (Adjust forward or backward on screen)
+        // 4. Horizontal Steer
         if (keys.left) {
           player.vx = -MOVE_SPEED;
           player.facing = -1;
@@ -1416,14 +1442,12 @@
           if (gameStarted) player.facing = 1;
         }
 
-        // 5. Gravity & Vertical Movement
+        // 5. Gravity
         player.vy += GRAVITY;
         if (player.vy > 12) player.vy = 12;
 
-        // Apply X steering and check collisions
         player.x += player.vx;
 
-        // Keep player within visible camera screen bounds
         const minScreenX = camera.x + 16;
         const maxScreenX = camera.x + canvas.width - 54;
         if (player.x < minScreenX) {
@@ -1442,7 +1466,6 @@
           }
         }
 
-        // Apply Y movement and check platform collisions
         player.y += player.vy;
         player.onGround = false;
 
@@ -1452,6 +1475,7 @@
               player.y = p.y - player.height;
               player.vy = 0;
               player.onGround = true;
+              player.jumpCount = 0; // RESET JUMPS ON LANDING
             } else if (player.vy < 0) {
               player.y = p.y + p.h;
               player.vy = 0;
@@ -1459,10 +1483,9 @@
           }
         }
 
-        // Pit fall death check
+        // Pit fall death
         if (player.y > canvas.height + 40 || player.y > 660) {
           triggerDamage();
-          // Find safe visible platform ahead on screen to respawn
           const visiblePlatform = platforms.find(p => p.x > camera.x + 80 && p.x < camera.x + canvas.width * 0.7);
           if (visiblePlatform) {
             player.x = visiblePlatform.x + 30;
@@ -1472,9 +1495,10 @@
             player.y = 16 * TILE_SIZE - player.height;
           }
           player.vy = 0;
+          player.jumpCount = 0;
         }
 
-        // 6. Update Companion Smooth Follow
+        // 6. Update Companion Follow
         if (player.companion.active) {
           const targetX = player.x - player.facing * 28;
           const targetY = player.y - 18 + Math.sin(frameCount * 0.1) * 6;
@@ -1482,7 +1506,7 @@
           player.companion.y += (targetY - player.companion.y) * 0.15;
         }
 
-        // 7. Update Enemies (Patrolling Bugs / Traps)
+        // 7. Update Enemies
         for (let bug of enemies) {
           if (bug.dead) continue;
 
@@ -1502,10 +1526,10 @@
             const isFallingOnTop = player.vy > 0 && playerBottomPrev <= bug.y + 10;
 
             if (isFallingOnTop || player.rainbowTimer > 0) {
-              // Stomp trap!
               bug.dead = true;
               sounds.playStomp();
               player.vy = JUMP_FORCE * 0.75;
+              player.jumpCount = 1; // Allow jumping again mid-air after squashing a bug!
               const pts = (player.rainbowTimer > 0) ? 100 : 50;
               addScore(pts, bug.x, bug.y);
 
@@ -1557,7 +1581,7 @@
           }
         }
 
-        // 9. Update Floating Texts
+        // 9. Floating Texts
         for (let i = floatingTexts.length - 1; i >= 0; i--) {
           const ft = floatingTexts[i];
           ft.y -= 1.1;
@@ -1567,7 +1591,7 @@
           }
         }
 
-        // 10. Update Particles
+        // 10. Particles
         for (let i = particles.length - 1; i >= 0; i--) {
           const p = particles[i];
           p.x += p.vx;
@@ -1616,10 +1640,8 @@
           ctx.translate(shakeX, shakeY);
         }
 
-        // 1. Draw Technical Engineering Grid Aligned to Moving Camera
         drawBackgroundGrid(ctx);
 
-        // 2. Camera Viewport
         ctx.save();
         ctx.translate(-Math.round(camera.x), -Math.round(camera.y));
 

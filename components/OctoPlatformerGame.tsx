@@ -56,6 +56,7 @@ const GRAVITY = 0.58;
 const JUMP_FORCE = -11.4;
 const SCROLL_SPEED = 2.6; // Continuous forward camera speed
 const MOVE_SPEED = 3.2;   // Relative player adjust speed
+const MAX_JUMPS = 3;      // Allow jumping up to 3 times before hitting the ground
 
 export default function OctoPlatformerGame({
   onOpenCodeViewer,
@@ -99,7 +100,7 @@ export default function OctoPlatformerGame({
     }
   }, []);
 
-  const playSound = useCallback((type: 'jump' | 'collect' | 'rainbow' | 'stomp' | 'damage' | 'gameover', val = 10) => {
+  const playSound = useCallback((type: 'jump' | 'collect' | 'rainbow' | 'stomp' | 'damage' | 'gameover', val = 1) => {
     if (isMuted) return;
     initAudio();
     const ctx = audioCtxRef.current;
@@ -111,8 +112,11 @@ export default function OctoPlatformerGame({
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = 'square';
-      osc.frequency.setValueAtTime(150, now);
-      osc.frequency.exponentialRampToValueAtTime(520, now + 0.12);
+      // Higher pitch for consecutive multi-jumps (1st, 2nd, 3rd)
+      const startF = val === 3 ? 300 : val === 2 ? 220 : 150;
+      const endF = val === 3 ? 800 : val === 2 ? 650 : 520;
+      osc.frequency.setValueAtTime(startF, now);
+      osc.frequency.exponentialRampToValueAtTime(endF, now + 0.12);
       gain.gain.setValueAtTime(0.08, now);
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
       osc.connect(gain);
@@ -234,6 +238,7 @@ export default function OctoPlatformerGame({
       vy: 0,
       facing: 1,
       onGround: false,
+      jumpCount: 0, // Number of jumps performed before landing
       invulnerableTimer: 0,
       walkFrame: 0,
       rainbowTimer: 0,
@@ -436,6 +441,7 @@ export default function OctoPlatformerGame({
     state.player.vx = 0;
     state.player.vy = 0;
     state.player.facing = 1;
+    state.player.jumpCount = 0;
     state.player.invulnerableTimer = 90;
     state.player.rainbowTimer = 0;
     state.player.companion.active = false;
@@ -454,14 +460,52 @@ export default function OctoPlatformerGame({
     }
   }, []);
 
+  // Multi-jump handler: Allows jumping multiple times (up to MAX_JUMPS) before hitting the ground
   const handleJump = useCallback(() => {
     const state = gameStateRef.current;
     if (state.isGameOver) return;
     triggerStart();
-    if (state.player.onGround) {
-      state.player.vy = JUMP_FORCE;
+
+    if (state.player.jumpCount < MAX_JUMPS) {
+      state.player.jumpCount++;
       state.player.onGround = false;
-      playSound('jump');
+
+      if (state.player.jumpCount === 1) {
+        // First jump (ground jump)
+        state.player.vy = JUMP_FORCE;
+        playSound('jump', 1);
+      } else if (state.player.jumpCount === 2) {
+        // Second jump (mid-air boost): goes up a little bit more!
+        state.player.vy = Math.min(-9.2, JUMP_FORCE * 0.85);
+        playSound('jump', 2);
+        // Spawn soft jump puff dust under tentacles
+        for (let i = 0; i < 5; i++) {
+          state.particles.push({
+            x: state.player.x + state.player.width / 2 + (Math.random() - 0.5) * 16,
+            y: state.player.y + state.player.height,
+            vx: (Math.random() - 0.5) * 2,
+            vy: Math.random() * 2 + 1,
+            color: '#94a3b8',
+            size: 2.5,
+            life: 14,
+          });
+        }
+      } else {
+        // Third jump (mid-air flutter): lifts up another bit!
+        state.player.vy = Math.min(-8.4, JUMP_FORCE * 0.76);
+        playSound('jump', 3);
+        for (let i = 0; i < 6; i++) {
+          state.particles.push({
+            x: state.player.x + state.player.width / 2 + (Math.random() - 0.5) * 18,
+            y: state.player.y + state.player.height,
+            vx: (Math.random() - 0.5) * 2.5,
+            vy: Math.random() * 2 + 1,
+            color: '#64748b',
+            size: 3,
+            life: 16,
+          });
+        }
+      }
     }
   }, [playSound, triggerStart]);
 
@@ -568,10 +612,9 @@ export default function OctoPlatformerGame({
         }
 
         // CONTINUOUS CAMERA MOTION AUTO-SCROLL
-        // As soon as the player initiates motion, the camera keeps moving forward continuously
         if (state.gameStarted) {
           state.camera.x += SCROLL_SPEED;
-          state.player.x += SCROLL_SPEED; // Carry player forward with camera
+          state.player.x += SCROLL_SPEED;
           state.player.walkFrame++;
         }
 
@@ -629,18 +672,21 @@ export default function OctoPlatformerGame({
         }
 
         // Y collision with platforms
-        state.player.y += state.player.vy;
-        state.player.onGround = false;
+        playerCheckY: {
+          state.player.y += state.player.vy;
+          state.player.onGround = false;
 
-        for (const p of state.platforms) {
-          if (checkAABB(state.player, p)) {
-            if (state.player.vy > 0) {
-              state.player.y = p.y - state.player.height;
-              state.player.vy = 0;
-              state.player.onGround = true;
-            } else if (state.player.vy < 0) {
-              state.player.y = p.y + p.h;
-              state.player.vy = 0;
+          for (const p of state.platforms) {
+            if (checkAABB(state.player, p)) {
+              if (state.player.vy > 0) {
+                state.player.y = p.y - state.player.height;
+                state.player.vy = 0;
+                state.player.onGround = true;
+                state.player.jumpCount = 0; // RESET JUMP COUNT ON LANDING
+              } else if (state.player.vy < 0) {
+                state.player.y = p.y + p.h;
+                state.player.vy = 0;
+              }
             }
           }
         }
@@ -652,6 +698,7 @@ export default function OctoPlatformerGame({
           playSound('damage');
           state.screenShake = 16;
           state.player.invulnerableTimer = 110;
+          state.player.jumpCount = 0;
 
           if (state.lives <= 0) {
             state.isGameOver = true;
@@ -664,7 +711,6 @@ export default function OctoPlatformerGame({
               return nh;
             });
           } else {
-            // Respawn on nearest visible platform on screen
             const visibleP = state.platforms.find(
               (p) => p.x > state.camera.x + 80 && p.x < state.camera.x + cvs.width * 0.7
             );
@@ -709,6 +755,7 @@ export default function OctoPlatformerGame({
               bug.dead = true;
               playSound('stomp');
               state.player.vy = JUMP_FORCE * 0.75;
+              state.player.jumpCount = 1; // Allow jumping again mid-air after squashing a bug!
               const pts = state.player.rainbowTimer > 0 ? 100 : 50;
               state.score += pts;
               setScore(state.score);
@@ -1204,7 +1251,7 @@ export default function OctoPlatformerGame({
             <span className="inline-flex items-center justify-center bg-white border border-slate-300 border-b-2 border-b-slate-400 rounded px-2 py-0.5 font-bold text-[11px] text-slate-800">
               Space
             </span>
-            <span className="text-slate-600">jump traps</span>
+            <span className="text-slate-600">multi-jump (x3)</span>
           </div>
 
           {/* Score Counter & Controls Bar */}
