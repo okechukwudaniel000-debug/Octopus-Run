@@ -408,9 +408,9 @@
         <div class="hud-controls-banner">
           <span class="key-badge">←</span>
           <span class="key-badge">→</span>
-          <span>adjust</span>
+          <span>run & dodge</span>
           <span style="color:#d0d7de">|</span>
-          <span class="key-badge">Space</span>
+          <span class="key-badge">Space / Click</span>
           <span>multi-jump (x3)</span>
         </div>
 
@@ -457,7 +457,6 @@
     <!-- Game Over Overlay -->
     <div id="game-over-modal" class="game-over-overlay">
       <div class="score-card">
-        <!-- SVG Octocat with Rainbow companion preview -->
         <svg class="octo-badge-avatar" viewBox="0 0 80 50">
           <rect x="18" y="4" width="22" height="6" fill="#ec4899" rx="2" />
           <rect x="16" y="10" width="26" height="6" fill="#8b5cf6" rx="2" />
@@ -488,7 +487,7 @@
     /**
      * OctoRun - 2D Grid Continuous Auto-Scroller Platformer
      * Continuous camera motion platformer with Web Audio API,
-     * procedural endless chunk generation, crawling bug traps,
+     * solid bottom ground level, crawling bug traps,
      * multi-jump mechanic, and pixel-art rendering.
      */
     (function () {
@@ -529,9 +528,8 @@
           const gain = this.ctx.createGain();
 
           osc.type = 'square';
-          // Ascending pitch for consecutive multi-jumps (1st, 2nd, 3rd)
-          const startF = jumpNum === 3 ? 300 : jumpNum === 2 ? 220 : 150;
-          const endF = jumpNum === 3 ? 800 : jumpNum === 2 ? 650 : 520;
+          const startF = jumpNum === 4 ? 380 : jumpNum === 3 ? 300 : jumpNum === 2 ? 220 : 150;
+          const endF = jumpNum === 4 ? 920 : jumpNum === 3 ? 800 : jumpNum === 2 ? 650 : 520;
           osc.frequency.setValueAtTime(startF, now);
           osc.frequency.exponentialRampToValueAtTime(endF, now + 0.12);
 
@@ -683,7 +681,7 @@
       const SCROLL_SPEED = 2.6; // Continuous forward auto-scroll speed
       const MOVE_SPEED = 3.2;   // Relative player adjust speed
       const MAX_LIVES = 3;
-      const MAX_JUMPS = 3;      // Allow jumping up to 3 times before hitting the ground
+      const MAX_JUMPS = 4;      // Allow jumping up to 4 times before hitting ground (multi-jump)
 
       // --- DOM REFERENCES ---
       const canvas = document.getElementById('gameCanvas');
@@ -714,6 +712,13 @@
       soundBtn.addEventListener('click', () => {
         sounds.toggleMute();
         updateSoundIcon();
+      });
+
+      // Allow clicking or tapping canvas to jump
+      canvas.addEventListener('pointerdown', () => {
+        sounds.init();
+        triggerGameStart();
+        handleJumpAction();
       });
 
       // --- INPUT HANDLING ---
@@ -796,6 +801,7 @@
       let frameCount = 0;
       let camera = { x: 0, y: 0 };
       let maxGeneratedX = 0;
+      let groundY = 432;
 
       hudHighScore.textContent = highScore;
 
@@ -827,20 +833,20 @@
 
       const player = {
         x: 160,
-        y: 280,
+        y: 394,
         width: 32,
         height: 38,
         vx: 0,
         vy: 0,
         facing: 1,
-        onGround: false,
-        jumpCount: 0, // Number of jumps before landing
+        onGround: true,
+        jumpCount: 0,
         invulnerableTimer: 0,
         walkFrame: 0,
         rainbowTimer: 0,
         companion: {
           x: 130,
-          y: 270,
+          y: 394,
           active: false
         }
       };
@@ -881,75 +887,78 @@
         });
       }
 
-      // Procedural chunk generator for continuous endless motion
+      // Procedural chunk generator: elevated platforms + continuous safe ground
       let chunkPatternIndex = 0;
       function generateNextChunk() {
+        const groundGridY = Math.floor(groundY / TILE_SIZE);
         const startG = Math.floor(maxGeneratedX / TILE_SIZE);
         const pattern = chunkPatternIndex % 6;
         chunkPatternIndex++;
 
         if (pattern === 0) {
-          addP(startG, 17, 8);
-          addP(startG + 10, 15, 6);
-          addP(startG + 18, 13, 8);
-          addBug(startG + 19, 13, 6);
-          addC(startG + 3, 16, 'yellow');
-          addC(startG + 12, 14, 'orange');
-          addC(startG + 22, 12, 'purple');
-          addC(startG + 24, 12, 'yellow');
+          addP(startG + 2, groundGridY - 3, 6);
+          addP(startG + 10, groundGridY - 5, 8);
+          addBug(startG + 11, groundGridY - 5, 6);
+          addC(startG + 13, groundGridY - 5, 'purple');
+          addC(startG + 15, groundGridY - 5, 'yellow');
+
+          // Ground items and ground bug
+          addC(startG + 4, groundGridY, 'yellow');
+          addC(startG + 8, groundGridY, 'orange');
+          addBug(startG + 19, groundGridY, 7);
+          addC(startG + 22, groundGridY, 'green');
           maxGeneratedX = (startG + 28) * TILE_SIZE;
         } else if (pattern === 1) {
-          addP(startG + 2, 18, 10);
-          addP(startG + 4, 12, 7);
-          addP(startG + 13, 10, 6);
-          addP(startG + 14, 18, 9);
-          addBug(startG + 4, 18, 7);
-          addBug(startG + 15, 18, 7);
-          addC(startG + 6, 11, 'quad');
-          addC(startG + 15, 9, 'blue');
-          addC(startG + 17, 9, 'chick');
+          addP(startG + 4, groundGridY - 4, 6);
+          addP(startG + 12, groundGridY - 7, 7);
+          addC(startG + 14, groundGridY - 7, 'chick');
+          addC(startG + 16, groundGridY - 7, 'blue');
+
+          addC(startG + 6, groundGridY, 'quad');
+          addBug(startG + 10, groundGridY, 6);
+          addC(startG + 18, groundGridY, 'yellow');
           maxGeneratedX = (startG + 25) * TILE_SIZE;
         } else if (pattern === 2) {
-          addP(startG + 2, 16, 5);
-          addP(startG + 9, 15, 5);
-          addP(startG + 16, 14, 5);
-          addP(startG + 23, 16, 6);
-          addBug(startG + 10, 15, 3);
-          addBug(startG + 24, 16, 4);
-          addC(startG + 4, 15, 'orange');
-          addC(startG + 11, 14, 'purple');
-          addC(startG + 18, 13, 'blue');
-          maxGeneratedX = (startG + 31) * TILE_SIZE;
+          addP(startG + 2, groundGridY - 3, 5);
+          addP(startG + 9, groundGridY - 4, 5);
+          addP(startG + 16, groundGridY - 5, 5);
+          addBug(startG + 10, groundGridY - 4, 3);
+          addC(startG + 4, groundGridY - 3, 'orange');
+          addC(startG + 11, groundGridY - 4, 'purple');
+
+          addC(startG + 6, groundGridY, 'yellow');
+          addBug(startG + 18, groundGridY, 8);
+          addC(startG + 22, groundGridY, 'orange');
+          maxGeneratedX = (startG + 28) * TILE_SIZE;
         } else if (pattern === 3) {
-          addP(startG + 2, 16, 8);
-          addP(startG + 12, 11, 7);
-          addP(startG + 11, 18, 12);
-          addC(startG + 15, 10, 'rainbow');
-          addC(startG + 13, 10, 'blue');
-          addC(startG + 17, 10, 'quad');
-          addBug(startG + 13, 18, 8);
-          maxGeneratedX = (startG + 25) * TILE_SIZE;
+          addP(startG + 6, groundGridY - 5, 8);
+          addC(startG + 9, groundGridY - 5, 'rainbow');
+          addC(startG + 11, groundGridY - 5, 'blue');
+
+          addC(startG + 3, groundGridY, 'yellow');
+          addBug(startG + 15, groundGridY, 7);
+          addC(startG + 18, groundGridY, 'purple');
+          maxGeneratedX = (startG + 24) * TILE_SIZE;
         } else if (pattern === 4) {
-          addP(startG + 2, 17, 18);
-          addP(startG + 7, 13, 5);
-          addP(startG + 14, 13, 5);
-          addBug(startG + 4, 17, 6);
-          addBug(startG + 12, 17, 6);
-          addC(startG + 8, 12, 'yellow');
-          addC(startG + 15, 12, 'orange');
-          addC(startG + 19, 16, 'green');
-          maxGeneratedX = (startG + 22) * TILE_SIZE;
+          addP(startG + 8, groundGridY - 4, 6);
+          addC(startG + 10, groundGridY - 4, 'orange');
+
+          addC(startG + 3, groundGridY, 'yellow');
+          addBug(startG + 5, groundGridY, 5);
+          addC(startG + 12, groundGridY, 'green');
+          addBug(startG + 15, groundGridY, 6);
+          addC(startG + 19, groundGridY, 'quad');
+          maxGeneratedX = (startG + 23) * TILE_SIZE;
         } else {
-          addP(startG + 2, 12, 6);
-          addP(startG + 10, 14, 5);
-          addP(startG + 17, 16, 6);
-          addP(startG + 25, 17, 8);
-          addBug(startG + 18, 16, 4);
-          addBug(startG + 26, 17, 6);
-          addC(startG + 4, 11, 'chick');
-          addC(startG + 12, 13, 'purple');
-          addC(startG + 28, 16, 'quad');
-          maxGeneratedX = (startG + 35) * TILE_SIZE;
+          addP(startG + 3, groundGridY - 3, 7);
+          addP(startG + 12, groundGridY - 5, 7);
+          addBug(startG + 4, groundGridY - 3, 5);
+          addC(startG + 14, groundGridY - 5, 'blue');
+          addC(startG + 16, groundGridY - 5, 'chick');
+
+          addC(startG + 7, groundGridY, 'yellow');
+          addBug(startG + 15, groundGridY, 7);
+          maxGeneratedX = (startG + 26) * TILE_SIZE;
         }
       }
 
@@ -962,12 +971,16 @@
         maxGeneratedX = 0;
         chunkPatternIndex = 0;
 
-        addP(0, 17, 24);
-        addC(6, 16, 'yellow');
-        addC(10, 16, 'orange');
-        addC(14, 16, 'yellow');
-        addBug(16, 17, 7);
-        addC(19, 16, 'purple');
+        const groundGridY = Math.floor(groundY / TILE_SIZE);
+
+        addP(12, groundGridY - 3, 6);
+        addC(14, groundGridY - 3, 'orange');
+
+        addC(6, groundGridY, 'yellow');
+        addC(9, groundGridY, 'yellow');
+        addBug(18, groundGridY, 7);
+        addC(22, groundGridY, 'purple');
+
         maxGeneratedX = 26 * TILE_SIZE;
 
         for (let i = 0; i < 4; i++) {
@@ -976,11 +989,15 @@
       }
 
       function resetPlayer() {
+        const h = canvas ? canvas.height : 500;
+        groundY = Math.max(360, Math.floor((h - 58) / TILE_SIZE) * TILE_SIZE);
+
         player.x = 160;
-        player.y = 17 * TILE_SIZE - player.height;
+        player.y = groundY - player.height;
         player.vx = 0;
         player.vy = 0;
         player.facing = 1;
+        player.onGround = true;
         player.jumpCount = 0;
         player.invulnerableTimer = 90;
         player.rainbowTimer = 0;
@@ -998,11 +1015,10 @@
         gameOverModal.classList.remove('visible');
         hudScore.textContent = '0';
         renderHearts();
-        buildInitialWorld();
         resetPlayer();
+        buildInitialWorld();
       }
 
-      // Multi-jump handler
       function handleJumpAction() {
         if (isGameOver) return;
         triggerGameStart();
@@ -1011,40 +1027,35 @@
           player.jumpCount++;
           player.onGround = false;
 
+          // Immediate upward impulse, resetting downward momentum to elevate upward
           if (player.jumpCount === 1) {
-            // First jump
-            player.vy = JUMP_FORCE;
+            player.vy = JUMP_FORCE; // -11.4: initial strong ground jump
             sounds.playJump(1);
           } else if (player.jumpCount === 2) {
-            // Second jump: goes up a little bit more!
-            player.vy = Math.min(-9.2, JUMP_FORCE * 0.85);
+            player.vy = -10.8; // 2nd jump: elevates further up
             sounds.playJump(2);
-            for (let i = 0; i < 5; i++) {
-              particles.push({
-                x: player.x + player.width / 2 + (Math.random() - 0.5) * 16,
-                y: player.y + player.height,
-                vx: (Math.random() - 0.5) * 2,
-                vy: Math.random() * 2 + 1,
-                color: '#94a3b8',
-                size: 2.5,
-                life: 14
-              });
-            }
-          } else {
-            // Third jump: flutter lift
-            player.vy = Math.min(-8.4, JUMP_FORCE * 0.76);
+          } else if (player.jumpCount === 3) {
+            player.vy = -10.2; // 3rd jump: lifts higher into the air
             sounds.playJump(3);
-            for (let i = 0; i < 6; i++) {
-              particles.push({
-                x: player.x + player.width / 2 + (Math.random() - 0.5) * 18,
-                y: player.y + player.height,
-                vx: (Math.random() - 0.5) * 2.5,
-                vy: Math.random() * 2 + 1,
-                color: '#64748b',
-                size: 3,
-                life: 16
-              });
-            }
+          } else {
+            player.vy = -9.6;  // 4th jump: final extra boost
+            sounds.playJump(4);
+          }
+
+          // Air puff particle colors indicating jump tier
+          const puffColors = ['#94a3b8', '#38bdf8', '#a855f7', '#ec4899'];
+          const puffColor = puffColors[Math.min(player.jumpCount - 1, puffColors.length - 1)];
+
+          for (let i = 0; i < 6; i++) {
+            particles.push({
+              x: player.x + player.width / 2 + (Math.random() - 0.5) * 16,
+              y: player.y + player.height,
+              vx: (Math.random() - 0.5) * 2.6,
+              vy: Math.random() * 2 + 1,
+              color: puffColor,
+              size: 3,
+              life: 16
+            });
           }
         }
       }
@@ -1058,12 +1069,11 @@
         sounds.playDamage();
         screenShake = 16;
         player.invulnerableTimer = 110;
-        player.jumpCount = 0;
+        player.vy = -6;
+        player.vx = -player.facing * 4;
 
         if (lives <= 0) {
           triggerGameOver();
-        } else {
-          player.vy = -6;
         }
       }
 
@@ -1289,8 +1299,7 @@
 
           ctx.fillStyle = '#f97316';
           ctx.beginPath();
-          ctx.moveTo(15, 3); ctx.lineTo(19, 5);
-          ctx.lineTo(15, 7);
+          ctx.moveTo(15, 3); ctx.lineTo(19, 5); ctx.lineTo(15, 7);
           ctx.fill();
 
           ctx.fillStyle = '#111827';
@@ -1380,12 +1389,10 @@
           return;
         }
 
-        // 1. Invulnerability countdown
         if (player.invulnerableTimer > 0) {
           player.invulnerableTimer--;
         }
 
-        // 2. Rainbow companion countdown
         if (player.rainbowTimer > 0) {
           player.rainbowTimer--;
           if (player.rainbowTimer <= 0) {
@@ -1407,7 +1414,7 @@
           }
         }
 
-        // 3. CONTINUOUS CAMERA AUTO-SCROLL
+        // CONTINUOUS CAMERA AUTO-SCROLL
         if (gameStarted) {
           camera.x += SCROLL_SPEED;
           player.x += SCROLL_SPEED;
@@ -1427,7 +1434,7 @@
           collectibles = collectibles.filter(c => c.x + c.width > discardX);
         }
 
-        // 4. Horizontal Steer
+        // Horizontal Steer
         if (keys.left) {
           player.vx = -MOVE_SPEED;
           player.facing = -1;
@@ -1442,7 +1449,7 @@
           if (gameStarted) player.facing = 1;
         }
 
-        // 5. Gravity
+        // Gravity
         player.vy += GRAVITY;
         if (player.vy > 12) player.vy = 12;
 
@@ -1456,26 +1463,31 @@
           player.x = maxScreenX;
         }
 
+        // Horizontal collision with floating platforms
         for (let p of platforms) {
           if (checkAABB(player, p)) {
-            if (player.vx > 0) {
-              player.x = p.x - player.width;
-            } else if (player.vx < 0) {
-              player.x = p.x + p.w;
+            if (player.y + player.height > p.y + 6 && player.y < p.y + p.h - 6) {
+              if (player.vx > 0) {
+                player.x = p.x - player.width;
+              } else if (player.vx < 0) {
+                player.x = p.x + p.w;
+              }
             }
           }
         }
 
+        // Vertical movement
         player.y += player.vy;
         player.onGround = false;
 
+        // Vertical collision with floating platforms
         for (let p of platforms) {
           if (checkAABB(player, p)) {
-            if (player.vy > 0) {
+            if (player.vy > 0 && (player.y + player.height - player.vy) <= p.y + 12) {
               player.y = p.y - player.height;
               player.vy = 0;
               player.onGround = true;
-              player.jumpCount = 0; // RESET JUMPS ON LANDING
+              player.jumpCount = 0;
             } else if (player.vy < 0) {
               player.y = p.y + p.h;
               player.vy = 0;
@@ -1483,22 +1495,15 @@
           }
         }
 
-        // Pit fall death
-        if (player.y > canvas.height + 40 || player.y > 660) {
-          triggerDamage();
-          const visiblePlatform = platforms.find(p => p.x > camera.x + 80 && p.x < camera.x + canvas.width * 0.7);
-          if (visiblePlatform) {
-            player.x = visiblePlatform.x + 30;
-            player.y = visiblePlatform.y - player.height - 15;
-          } else {
-            player.x = camera.x + 180;
-            player.y = 16 * TILE_SIZE - player.height;
-          }
+        // CONTINUOUS SOLID BOTTOM GROUND FLOOR (CANNOT FALL DOWN LIMITLESSLY)
+        if (player.y + player.height >= groundY) {
+          player.y = groundY - player.height;
           player.vy = 0;
+          player.onGround = true;
           player.jumpCount = 0;
         }
 
-        // 6. Update Companion Follow
+        // Update Companion Follow
         if (player.companion.active) {
           const targetX = player.x - player.facing * 28;
           const targetY = player.y - 18 + Math.sin(frameCount * 0.1) * 6;
@@ -1506,7 +1511,7 @@
           player.companion.y += (targetY - player.companion.y) * 0.15;
         }
 
-        // 7. Update Enemies
+        // Update Enemies
         for (let bug of enemies) {
           if (bug.dead) continue;
 
@@ -1529,7 +1534,7 @@
               bug.dead = true;
               sounds.playStomp();
               player.vy = JUMP_FORCE * 0.75;
-              player.jumpCount = 1; // Allow jumping again mid-air after squashing a bug!
+              player.jumpCount = 1;
               const pts = (player.rainbowTimer > 0) ? 100 : 50;
               addScore(pts, bug.x, bug.y);
 
@@ -1550,7 +1555,7 @@
           }
         }
 
-        // 8. Update Collectibles
+        // Update Collectibles
         for (let c of collectibles) {
           if (c.collected) continue;
 
@@ -1581,7 +1586,7 @@
           }
         }
 
-        // 9. Floating Texts
+        // Floating Texts
         for (let i = floatingTexts.length - 1; i >= 0; i--) {
           const ft = floatingTexts[i];
           ft.y -= 1.1;
@@ -1591,7 +1596,7 @@
           }
         }
 
-        // 10. Particles
+        // Particles
         for (let i = particles.length - 1; i >= 0; i--) {
           const p = particles[i];
           p.x += p.vx;
@@ -1640,8 +1645,47 @@
           ctx.translate(shakeX, shakeY);
         }
 
+        // 1. Engineering grid
         drawBackgroundGrid(ctx);
 
+        // 2. Continuous Solid Ground Floor (Seamless dark platform blocks across the bottom of the screen)
+        const numGroundCols = Math.ceil(canvas.width / TILE_SIZE) + 2;
+        const groundColStart = Math.floor(camera.x / TILE_SIZE) - 1;
+
+        for (let c = 0; c < numGroundCols; c++) {
+          const colX = (groundColStart + c) * TILE_SIZE - Math.round(camera.x);
+          const colY = groundY;
+
+          // Ground surface platform tile
+          ctx.fillStyle = '#555b62';
+          ctx.fillRect(colX, colY, TILE_SIZE, TILE_SIZE);
+
+          ctx.fillStyle = '#6b7280';
+          ctx.fillRect(colX, colY, TILE_SIZE, 2);
+
+          ctx.strokeStyle = '#374151';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(colX + 0.5, colY + 0.5, TILE_SIZE - 1, TILE_SIZE - 1);
+
+          ctx.fillStyle = '#4b5563';
+          ctx.fillRect(colX + TILE_SIZE / 2 - 1, colY + TILE_SIZE / 2 - 1, 2, 2);
+
+          // Subsurface foundation below ground surface blocks to bottom of viewport
+          const subH = canvas.height - (colY + TILE_SIZE);
+          if (subH > 0) {
+            ctx.fillStyle = '#3f444a';
+            ctx.fillRect(colX, colY + TILE_SIZE, TILE_SIZE, subH);
+
+            ctx.strokeStyle = '#32373d';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(colX + 0.5, colY + TILE_SIZE);
+            ctx.lineTo(colX + 0.5, canvas.height);
+            ctx.stroke();
+          }
+        }
+
+        // 3. Camera Viewport
         ctx.save();
         ctx.translate(-Math.round(camera.x), -Math.round(camera.y));
 
@@ -1713,6 +1757,7 @@
         const container = document.getElementById('game-container');
         canvas.width = container.clientWidth;
         canvas.height = container.clientHeight;
+        groundY = Math.max(360, Math.floor((canvas.height - 58) / TILE_SIZE) * TILE_SIZE);
       }
 
       window.addEventListener('resize', resizeCanvas);

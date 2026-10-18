@@ -56,7 +56,7 @@ const GRAVITY = 0.58;
 const JUMP_FORCE = -11.4;
 const SCROLL_SPEED = 2.6; // Continuous forward camera speed
 const MOVE_SPEED = 3.2;   // Relative player adjust speed
-const MAX_JUMPS = 3;      // Allow jumping up to 3 times before hitting the ground
+const MAX_JUMPS = 4;      // Allow jumping up to 4 times before hitting ground (multi-jump)
 
 export default function OctoPlatformerGame({
   onOpenCodeViewer,
@@ -112,9 +112,8 @@ export default function OctoPlatformerGame({
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = 'square';
-      // Higher pitch for consecutive multi-jumps (1st, 2nd, 3rd)
-      const startF = val === 3 ? 300 : val === 2 ? 220 : 150;
-      const endF = val === 3 ? 800 : val === 2 ? 650 : 520;
+      const startF = val === 4 ? 380 : val === 3 ? 300 : val === 2 ? 220 : 150;
+      const endF = val === 4 ? 920 : val === 3 ? 800 : val === 2 ? 650 : 520;
       osc.frequency.setValueAtTime(startF, now);
       osc.frequency.exponentialRampToValueAtTime(endF, now + 0.12);
       gain.gain.setValueAtTime(0.08, now);
@@ -228,23 +227,24 @@ export default function OctoPlatformerGame({
     frameCount: 0,
     maxGeneratedX: 0,
     chunkPatternIndex: 0,
+    groundY: 432,
     camera: { x: 0, y: 0 },
     player: {
       x: 160,
-      y: 17 * TILE_SIZE - 38,
+      y: 394,
       width: 32,
       height: 38,
       vx: 0,
       vy: 0,
       facing: 1,
-      onGround: false,
-      jumpCount: 0, // Number of jumps performed before landing
+      onGround: true,
+      jumpCount: 0,
       invulnerableTimer: 0,
       walkFrame: 0,
       rainbowTimer: 0,
       companion: {
         x: 130,
-        y: 17 * TILE_SIZE - 38,
+        y: 394,
         active: false,
       },
     },
@@ -262,6 +262,7 @@ export default function OctoPlatformerGame({
 
   const generateChunk = useCallback(() => {
     const state = gameStateRef.current;
+    const groundGridY = Math.floor(state.groundY / TILE_SIZE);
     const startG = Math.floor(state.maxGeneratedX / TILE_SIZE);
     const pattern = state.chunkPatternIndex % 6;
     state.chunkPatternIndex++;
@@ -303,67 +304,79 @@ export default function OctoPlatformerGame({
     };
 
     if (pattern === 0) {
-      addP(startG, 17, 8);
-      addP(startG + 10, 15, 6);
-      addP(startG + 18, 13, 8);
-      addBug(startG + 19, 13, 6);
-      addC(startG + 3, 16, 'yellow');
-      addC(startG + 12, 14, 'orange');
-      addC(startG + 22, 12, 'purple');
-      addC(startG + 24, 12, 'yellow');
+      // Floating terraces + ground bug trap & collectibles on ground
+      addP(startG + 2, groundGridY - 3, 6);
+      addP(startG + 10, groundGridY - 5, 8);
+      addBug(startG + 11, groundGridY - 5, 6);
+      addC(startG + 13, groundGridY - 5, 'purple');
+      addC(startG + 15, groundGridY - 5, 'yellow');
+
+      // Ground level: collectibles to collect while running without jumping
+      addC(startG + 4, groundGridY, 'yellow');
+      addC(startG + 8, groundGridY, 'orange');
+      // Ground trap bug to jump over or avoid
+      addBug(startG + 19, groundGridY, 7);
+      addC(startG + 22, groundGridY, 'green');
       state.maxGeneratedX = (startG + 28) * TILE_SIZE;
     } else if (pattern === 1) {
-      addP(startG + 2, 18, 10);
-      addP(startG + 4, 12, 7);
-      addP(startG + 13, 10, 6);
-      addP(startG + 14, 18, 9);
-      addBug(startG + 4, 18, 7);
-      addBug(startG + 15, 18, 7);
-      addC(startG + 6, 11, 'quad');
-      addC(startG + 15, 9, 'blue');
-      addC(startG + 17, 9, 'chick');
+      // High secret branch with Golden Duckling easter egg
+      addP(startG + 4, groundGridY - 4, 6);
+      addP(startG + 12, groundGridY - 7, 7);
+      addC(startG + 14, groundGridY - 7, 'chick'); // Golden duckling
+      addC(startG + 16, groundGridY - 7, 'blue');
+
+      // Ground runway with gems and a ground bug
+      addC(startG + 6, groundGridY, 'quad');
+      addBug(startG + 10, groundGridY, 6);
+      addC(startG + 18, groundGridY, 'yellow');
       state.maxGeneratedX = (startG + 25) * TILE_SIZE;
     } else if (pattern === 2) {
-      addP(startG + 2, 16, 5);
-      addP(startG + 9, 15, 5);
-      addP(startG + 16, 14, 5);
-      addP(startG + 23, 16, 6);
-      addBug(startG + 10, 15, 3);
-      addBug(startG + 24, 16, 4);
-      addC(startG + 4, 15, 'orange');
-      addC(startG + 11, 14, 'purple');
-      addC(startG + 18, 13, 'blue');
-      state.maxGeneratedX = (startG + 31) * TILE_SIZE;
+      // Stepping stone high path with ground continuously walkable underneath
+      addP(startG + 2, groundGridY - 3, 5);
+      addP(startG + 9, groundGridY - 4, 5);
+      addP(startG + 16, groundGridY - 5, 5);
+      addBug(startG + 10, groundGridY - 4, 3);
+      addC(startG + 4, groundGridY - 3, 'orange');
+      addC(startG + 11, groundGridY - 4, 'purple');
+
+      // Ground items and ground bug
+      addC(startG + 6, groundGridY, 'yellow');
+      addBug(startG + 18, groundGridY, 8);
+      addC(startG + 22, groundGridY, 'orange');
+      state.maxGeneratedX = (startG + 28) * TILE_SIZE;
     } else if (pattern === 3) {
-      addP(startG + 2, 16, 8);
-      addP(startG + 12, 11, 7);
-      addP(startG + 11, 18, 12);
-      addC(startG + 15, 10, 'rainbow');
-      addC(startG + 13, 10, 'blue');
-      addC(startG + 17, 10, 'quad');
-      addBug(startG + 13, 18, 8);
-      state.maxGeneratedX = (startG + 25) * TILE_SIZE;
+      // Rainbow Companion Altar floating above the continuous ground
+      addP(startG + 6, groundGridY - 5, 8);
+      addC(startG + 9, groundGridY - 5, 'rainbow'); // Rainbow companion!
+      addC(startG + 11, groundGridY - 5, 'blue');
+
+      // Ground level
+      addC(startG + 3, groundGridY, 'yellow');
+      addBug(startG + 15, groundGridY, 7);
+      addC(startG + 18, groundGridY, 'purple');
+      state.maxGeneratedX = (startG + 24) * TILE_SIZE;
     } else if (pattern === 4) {
-      addP(startG + 2, 17, 18);
-      addP(startG + 7, 13, 5);
-      addP(startG + 14, 13, 5);
-      addBug(startG + 4, 17, 6);
-      addBug(startG + 12, 17, 6);
-      addC(startG + 8, 12, 'yellow');
-      addC(startG + 15, 12, 'orange');
-      addC(startG + 19, 16, 'green');
-      state.maxGeneratedX = (startG + 22) * TILE_SIZE;
+      // Wide open ground run with alternating bugs and items
+      addP(startG + 8, groundGridY - 4, 6);
+      addC(startG + 10, groundGridY - 4, 'orange');
+
+      addC(startG + 3, groundGridY, 'yellow');
+      addBug(startG + 5, groundGridY, 5);
+      addC(startG + 12, groundGridY, 'green');
+      addBug(startG + 15, groundGridY, 6);
+      addC(startG + 19, groundGridY, 'quad');
+      state.maxGeneratedX = (startG + 23) * TILE_SIZE;
     } else {
-      addP(startG + 2, 12, 6);
-      addP(startG + 10, 14, 5);
-      addP(startG + 17, 16, 6);
-      addP(startG + 25, 17, 8);
-      addBug(startG + 18, 16, 4);
-      addBug(startG + 26, 17, 6);
-      addC(startG + 4, 11, 'chick');
-      addC(startG + 12, 13, 'purple');
-      addC(startG + 28, 16, 'quad');
-      state.maxGeneratedX = (startG + 35) * TILE_SIZE;
+      // Double tier platforms
+      addP(startG + 3, groundGridY - 3, 7);
+      addP(startG + 12, groundGridY - 5, 7);
+      addBug(startG + 4, groundGridY - 3, 5);
+      addC(startG + 14, groundGridY - 5, 'blue');
+      addC(startG + 16, groundGridY - 5, 'chick');
+
+      addC(startG + 7, groundGridY, 'yellow');
+      addBug(startG + 15, groundGridY, 7);
+      state.maxGeneratedX = (startG + 26) * TILE_SIZE;
     }
   }, []);
 
@@ -376,6 +389,8 @@ export default function OctoPlatformerGame({
     state.particles = [];
     state.maxGeneratedX = 0;
     state.chunkPatternIndex = 0;
+
+    const groundGridY = Math.floor(state.groundY / TILE_SIZE);
 
     const addP = (gx: number, gy: number, gw: number, gh = 1) => {
       state.platforms.push({
@@ -413,13 +428,16 @@ export default function OctoPlatformerGame({
       });
     };
 
-    // Safe starting runway
-    addP(0, 17, 24);
-    addC(6, 16, 'yellow');
-    addC(10, 16, 'orange');
-    addC(14, 16, 'yellow');
-    addBug(16, 17, 7);
-    addC(19, 16, 'purple');
+    // Initial floating practice tier
+    addP(12, groundGridY - 3, 6);
+    addC(14, groundGridY - 3, 'orange');
+
+    // Collectibles right on the ground floor
+    addC(6, groundGridY, 'yellow');
+    addC(9, groundGridY, 'yellow');
+    addBug(18, groundGridY, 7); // First ground bug trap to jump over
+    addC(22, groundGridY, 'purple');
+
     state.maxGeneratedX = 26 * TILE_SIZE;
 
     // Pre-populate chunks ahead
@@ -429,7 +447,12 @@ export default function OctoPlatformerGame({
   }, [generateChunk]);
 
   const resetGame = useCallback(() => {
+    const cvs = canvasRef.current;
+    const h = cvs ? cvs.height : 500;
+    const groundY = Math.max(360, Math.floor((h - 58) / TILE_SIZE) * TILE_SIZE);
+
     const state = gameStateRef.current;
+    state.groundY = groundY;
     state.score = 0;
     state.lives = 3;
     state.isGameOver = false;
@@ -437,10 +460,11 @@ export default function OctoPlatformerGame({
     state.screenShake = 0;
     state.camera = { x: 0, y: 0 };
     state.player.x = 160;
-    state.player.y = 17 * TILE_SIZE - 38;
+    state.player.y = groundY - 38;
     state.player.vx = 0;
     state.player.vy = 0;
     state.player.facing = 1;
+    state.player.onGround = true;
     state.player.jumpCount = 0;
     state.player.invulnerableTimer = 90;
     state.player.rainbowTimer = 0;
@@ -460,7 +484,6 @@ export default function OctoPlatformerGame({
     }
   }, []);
 
-  // Multi-jump handler: Allows jumping multiple times (up to MAX_JUMPS) before hitting the ground
   const handleJump = useCallback(() => {
     const state = gameStateRef.current;
     if (state.isGameOver) return;
@@ -470,46 +493,39 @@ export default function OctoPlatformerGame({
       state.player.jumpCount++;
       state.player.onGround = false;
 
+      // Immediate upward impulse, completely resetting downward momentum to elevate upward
       if (state.player.jumpCount === 1) {
-        // First jump (ground jump)
-        state.player.vy = JUMP_FORCE;
+        state.player.vy = JUMP_FORCE; // -11.4: initial strong ground jump
         playSound('jump', 1);
       } else if (state.player.jumpCount === 2) {
-        // Second jump (mid-air boost): goes up a little bit more!
-        state.player.vy = Math.min(-9.2, JUMP_FORCE * 0.85);
+        state.player.vy = -10.8; // 2nd jump: elevates further up
         playSound('jump', 2);
-        // Spawn soft jump puff dust under tentacles
-        for (let i = 0; i < 5; i++) {
-          state.particles.push({
-            x: state.player.x + state.player.width / 2 + (Math.random() - 0.5) * 16,
-            y: state.player.y + state.player.height,
-            vx: (Math.random() - 0.5) * 2,
-            vy: Math.random() * 2 + 1,
-            color: '#94a3b8',
-            size: 2.5,
-            life: 14,
-          });
-        }
-      } else {
-        // Third jump (mid-air flutter): lifts up another bit!
-        state.player.vy = Math.min(-8.4, JUMP_FORCE * 0.76);
+      } else if (state.player.jumpCount === 3) {
+        state.player.vy = -10.2; // 3rd jump: lifts higher into the air
         playSound('jump', 3);
-        for (let i = 0; i < 6; i++) {
-          state.particles.push({
-            x: state.player.x + state.player.width / 2 + (Math.random() - 0.5) * 18,
-            y: state.player.y + state.player.height,
-            vx: (Math.random() - 0.5) * 2.5,
-            vy: Math.random() * 2 + 1,
-            color: '#64748b',
-            size: 3,
-            life: 16,
-          });
-        }
+      } else {
+        state.player.vy = -9.6;  // 4th jump: final extra boost
+        playSound('jump', 4);
+      }
+
+      // Air puff particle colors indicating jump tier
+      const puffColors = ['#94a3b8', '#38bdf8', '#a855f7', '#ec4899'];
+      const puffColor = puffColors[Math.min(state.player.jumpCount - 1, puffColors.length - 1)];
+
+      for (let i = 0; i < 6; i++) {
+        state.particles.push({
+          x: state.player.x + state.player.width / 2 + (Math.random() - 0.5) * 16,
+          y: state.player.y + state.player.height,
+          vx: (Math.random() - 0.5) * 2.6,
+          vy: Math.random() * 2 + 1,
+          color: puffColor,
+          size: 3,
+          life: 16,
+        });
       }
     }
   }, [playSound, triggerStart]);
 
-  // Handle Keyboard inputs
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       initAudio();
@@ -560,6 +576,8 @@ export default function OctoPlatformerGame({
       if (!cvs || !containerRef.current) return;
       cvs.width = containerRef.current.clientWidth;
       cvs.height = containerRef.current.clientHeight;
+      const groundY = Math.max(360, Math.floor((cvs.height - 58) / TILE_SIZE) * TILE_SIZE);
+      gameStateRef.current.groundY = groundY;
     };
     resize();
     window.addEventListener('resize', resize);
@@ -583,13 +601,13 @@ export default function OctoPlatformerGame({
         if (state.screenShake < 0.2) state.screenShake = 0;
       }
 
+      const groundY = state.groundY;
+
       if (!state.isGameOver) {
-        // Invulnerability
         if (state.player.invulnerableTimer > 0) {
           state.player.invulnerableTimer--;
         }
 
-        // Rainbow Companion timer
         if (state.player.rainbowTimer > 0) {
           state.player.rainbowTimer--;
           if (state.player.rainbowTimer <= 0) {
@@ -618,7 +636,7 @@ export default function OctoPlatformerGame({
           state.player.walkFrame++;
         }
 
-        // Generate procedural chunks ahead of screen
+        // Generate procedural chunks ahead
         if (state.camera.x + cvs.width + 800 > state.maxGeneratedX) {
           generateChunk();
         }
@@ -631,7 +649,7 @@ export default function OctoPlatformerGame({
           state.collectibles = state.collectibles.filter((c) => c.x + c.width > discardX);
         }
 
-        // Horizontal steer (adjust forward / backward on screen)
+        // Horizontal steer
         if (state.keys.left) {
           state.player.vx = -MOVE_SPEED;
           state.player.facing = -1;
@@ -650,9 +668,9 @@ export default function OctoPlatformerGame({
         state.player.vy += GRAVITY;
         if (state.player.vy > 12) state.player.vy = 12;
 
-        // Apply X steering and screen clamping
         state.player.x += state.player.vx;
 
+        // Screen bounds clamping
         const minScreenX = state.camera.x + 16;
         const maxScreenX = state.camera.x + cvs.width - 54;
         if (state.player.x < minScreenX) {
@@ -661,68 +679,44 @@ export default function OctoPlatformerGame({
           state.player.x = maxScreenX;
         }
 
+        // Horizontal collision with floating platforms
         for (const p of state.platforms) {
           if (checkAABB(state.player, p)) {
-            if (state.player.vx > 0) {
-              state.player.x = p.x - state.player.width;
-            } else if (state.player.vx < 0) {
-              state.player.x = p.x + p.w;
-            }
-          }
-        }
-
-        // Y collision with platforms
-        playerCheckY: {
-          state.player.y += state.player.vy;
-          state.player.onGround = false;
-
-          for (const p of state.platforms) {
-            if (checkAABB(state.player, p)) {
-              if (state.player.vy > 0) {
-                state.player.y = p.y - state.player.height;
-                state.player.vy = 0;
-                state.player.onGround = true;
-                state.player.jumpCount = 0; // RESET JUMP COUNT ON LANDING
-              } else if (state.player.vy < 0) {
-                state.player.y = p.y + p.h;
-                state.player.vy = 0;
+            if (state.player.y + state.player.height > p.y + 6 && state.player.y < p.y + p.h - 6) {
+              if (state.player.vx > 0) {
+                state.player.x = p.x - state.player.width;
+              } else if (state.player.vx < 0) {
+                state.player.x = p.x + p.w;
               }
             }
           }
         }
 
-        // Pit fall death / off-screen bottom
-        if (state.player.y > cvs.height + 40 || state.player.y > 660) {
-          state.lives--;
-          setLives(state.lives);
-          playSound('damage');
-          state.screenShake = 16;
-          state.player.invulnerableTimer = 110;
-          state.player.jumpCount = 0;
+        // Vertical movement
+        state.player.y += state.player.vy;
+        state.player.onGround = false;
 
-          if (state.lives <= 0) {
-            state.isGameOver = true;
-            setFinalScore(state.score);
-            setIsGameOver(true);
-            playSound('gameover');
-            setHighScore((prev) => {
-              const nh = Math.max(prev, state.score);
-              localStorage.setItem('octo_game_high_score', String(nh));
-              return nh;
-            });
-          } else {
-            const visibleP = state.platforms.find(
-              (p) => p.x > state.camera.x + 80 && p.x < state.camera.x + cvs.width * 0.7
-            );
-            if (visibleP) {
-              state.player.x = visibleP.x + 30;
-              state.player.y = visibleP.y - state.player.height - 15;
-            } else {
-              state.player.x = state.camera.x + 180;
-              state.player.y = 16 * TILE_SIZE - state.player.height;
+        // Vertical collision with floating platforms
+        for (const p of state.platforms) {
+          if (checkAABB(state.player, p)) {
+            if (state.player.vy > 0 && (state.player.y + state.player.height - state.player.vy) <= p.y + 12) {
+              state.player.y = p.y - state.player.height;
+              state.player.vy = 0;
+              state.player.onGround = true;
+              state.player.jumpCount = 0;
+            } else if (state.player.vy < 0) {
+              state.player.y = p.y + p.h;
+              state.player.vy = 0;
             }
-            state.player.vy = 0;
           }
+        }
+
+        // CONTINUOUS SOLID BOTTOM GROUND LEVEL (NO PIT-FALLS)
+        if (state.player.y + state.player.height >= groundY) {
+          state.player.y = groundY - state.player.height;
+          state.player.vy = 0;
+          state.player.onGround = true;
+          state.player.jumpCount = 0;
         }
 
         // Update Companion position
@@ -755,7 +749,7 @@ export default function OctoPlatformerGame({
               bug.dead = true;
               playSound('stomp');
               state.player.vy = JUMP_FORCE * 0.75;
-              state.player.jumpCount = 1; // Allow jumping again mid-air after squashing a bug!
+              state.player.jumpCount = 1;
               const pts = state.player.rainbowTimer > 0 ? 100 : 50;
               state.score += pts;
               setScore(state.score);
@@ -783,6 +777,7 @@ export default function OctoPlatformerGame({
               state.screenShake = 16;
               state.player.invulnerableTimer = 110;
               state.player.vy = -6;
+              state.player.vx = -state.player.facing * 4;
 
               if (state.lives <= 0) {
                 state.isGameOver = true;
@@ -841,7 +836,6 @@ export default function OctoPlatformerGame({
           }
         }
 
-        // Floating texts
         for (let i = state.floatingTexts.length - 1; i >= 0; i--) {
           const ft = state.floatingTexts[i];
           ft.y -= 1.1;
@@ -851,7 +845,6 @@ export default function OctoPlatformerGame({
           }
         }
 
-        // Particles
         for (let i = state.particles.length - 1; i >= 0; i--) {
           const p = state.particles[i];
           p.x += p.vx;
@@ -871,7 +864,7 @@ export default function OctoPlatformerGame({
         ctx.translate((Math.random() - 0.5) * state.screenShake, (Math.random() - 0.5) * state.screenShake);
       }
 
-      // Technical Grid background
+      // 1. Technical Grid background
       const gridSize = TILE_SIZE;
       const offsetX = -(state.camera.x % gridSize);
       const offsetY = -(state.camera.y % gridSize);
@@ -889,7 +882,44 @@ export default function OctoPlatformerGame({
       }
       ctx.stroke();
 
-      // Camera Transform
+      // 2. Continuous Solid Ground Floor (Seamless dark platform blocks across the bottom of the screen)
+      const numGroundCols = Math.ceil(cvs.width / TILE_SIZE) + 2;
+      const groundColStart = Math.floor(state.camera.x / TILE_SIZE) - 1;
+
+      for (let c = 0; c < numGroundCols; c++) {
+        const colX = (groundColStart + c) * TILE_SIZE - Math.round(state.camera.x);
+        const colY = groundY;
+
+        // Ground surface platform tile
+        ctx.fillStyle = '#555b62';
+        ctx.fillRect(colX, colY, TILE_SIZE, TILE_SIZE);
+
+        ctx.fillStyle = '#6b7280';
+        ctx.fillRect(colX, colY, TILE_SIZE, 2);
+
+        ctx.strokeStyle = '#374151';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(colX + 0.5, colY + 0.5, TILE_SIZE - 1, TILE_SIZE - 1);
+
+        ctx.fillStyle = '#4b5563';
+        ctx.fillRect(colX + TILE_SIZE / 2 - 1, colY + TILE_SIZE / 2 - 1, 2, 2);
+
+        // Subsurface foundation below ground surface blocks to bottom of viewport
+        const subH = cvs.height - (colY + TILE_SIZE);
+        if (subH > 0) {
+          ctx.fillStyle = '#3f444a';
+          ctx.fillRect(colX, colY + TILE_SIZE, TILE_SIZE, subH);
+
+          ctx.strokeStyle = '#32373d';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(colX + 0.5, colY + TILE_SIZE);
+          ctx.lineTo(colX + 0.5, cvs.height);
+          ctx.stroke();
+        }
+      }
+
+      // 3. Camera Transform
       ctx.save();
       ctx.translate(-Math.round(state.camera.x), -Math.round(state.camera.y));
 
@@ -1208,7 +1238,16 @@ export default function OctoPlatformerGame({
       )}
 
       {/* Main Canvas Viewport */}
-      <canvas ref={canvasRef} className="block w-full h-full" />
+      <canvas
+        ref={canvasRef}
+        className="block w-full h-full cursor-pointer select-none"
+        onPointerDown={(e) => {
+          // Allow clicking anywhere on canvas to trigger jump
+          initAudio();
+          triggerStart();
+          handleJump();
+        }}
+      />
 
       {/* HUD Layer */}
       <div className="absolute inset-0 pointer-events-none z-10 flex flex-col justify-between p-4 sm:p-6">
@@ -1246,10 +1285,10 @@ export default function OctoPlatformerGame({
             <span className="inline-flex items-center justify-center bg-white border border-slate-300 border-b-2 border-b-slate-400 rounded px-1.5 py-0.5 font-bold text-[11px] text-slate-800 min-w-5">
               →
             </span>
-            <span className="text-slate-600">adjust</span>
+            <span className="text-slate-600">run & dodge</span>
             <span className="text-slate-300">|</span>
             <span className="inline-flex items-center justify-center bg-white border border-slate-300 border-b-2 border-b-slate-400 rounded px-2 py-0.5 font-bold text-[11px] text-slate-800">
-              Space
+              Space / Click
             </span>
             <span className="text-slate-600">multi-jump (x3)</span>
           </div>
