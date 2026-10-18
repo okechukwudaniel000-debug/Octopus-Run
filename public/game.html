@@ -1,0 +1,1815 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>OctoRun - 2D Grid Platformer</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #f4f4f4;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, monospace;
+      color: #24292f;
+    }
+
+    #game-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #f4f4f4;
+    }
+
+    /* Top decorative purple band */
+    .top-accent-band {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 12px;
+      background: linear-gradient(90deg, #9333ea, #a855f7, #c084fc, #9333ea);
+      z-index: 20;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+
+    /* HUD Elements */
+    .hud-layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 20px 24px 16px 24px;
+    }
+
+    .hud-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+    }
+
+    .hud-hearts {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      pointer-events: auto;
+    }
+
+    .heart-icon {
+      width: 22px;
+      height: 22px;
+      display: inline-block;
+      transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.2s ease;
+    }
+
+    .heart-icon.lost {
+      opacity: 0.2;
+      transform: scale(0.85);
+      filter: grayscale(100%);
+    }
+
+    .hud-controls-banner {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 13px;
+      color: #57606a;
+      background: rgba(255, 255, 255, 0.7);
+      backdrop-filter: blur(4px);
+      padding: 4px 12px;
+      border-radius: 6px;
+      border: 1px solid #d0d7de;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    }
+
+    .key-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: #ffffff;
+      border: 1px solid #d0d7de;
+      border-bottom: 2px solid #afb8c1;
+      border-radius: 4px;
+      padding: 2px 7px;
+      font-weight: 600;
+      font-size: 11px;
+      color: #24292f;
+      min-width: 22px;
+      box-shadow: 0 1px 0 rgba(0, 0, 0, 0.05);
+    }
+
+    .hud-score-panel {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      pointer-events: auto;
+    }
+
+    .score-display {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 15px;
+      font-weight: 600;
+      color: #24292f;
+      letter-spacing: -0.2px;
+    }
+
+    .sound-toggle-btn {
+      background: #ffffff;
+      border: 1px solid #d0d7de;
+      border-radius: 6px;
+      width: 32px;
+      height: 32px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: #24292f;
+      transition: background-color 0.15s ease, border-color 0.15s ease;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    }
+
+    .sound-toggle-btn:hover {
+      background: #f3f4f6;
+      border-color: #8c959f;
+    }
+
+    .sound-toggle-btn:active {
+      transform: translateY(1px);
+    }
+
+    .hud-bottom {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      width: 100%;
+    }
+
+    .hud-meta-info {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 14px;
+      color: #57606a;
+      letter-spacing: 0.2px;
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(4px);
+      padding: 6px 14px;
+      border-radius: 6px;
+      border: 1px solid #d0d7de;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .blinking-cursor {
+      display: inline-block;
+      width: 8px;
+      height: 12px;
+      background-color: #10b981;
+      margin-left: 2px;
+      animation: cursor-blink 1s steps(1) infinite;
+    }
+
+    @keyframes cursor-blink {
+      0%, 49% { opacity: 1; }
+      50%, 100% { opacity: 0; }
+    }
+
+    .btn-exit {
+      pointer-events: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 13px;
+      color: #24292f;
+      background: #ffffff;
+      border: 1px solid #d0d7de;
+      border-radius: 6px;
+      padding: 6px 16px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+      font-weight: 500;
+    }
+
+    .btn-exit:hover {
+      background: #f6f8fa;
+      border-color: #8c959f;
+    }
+
+    .btn-exit:active {
+      transform: translateY(1px);
+    }
+
+    /* Game Over Modal Screen */
+    .game-over-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(244, 244, 244, 0.7);
+      backdrop-filter: blur(3px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 30;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    .game-over-overlay.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .score-card {
+      background: #ffffff;
+      border: 1px solid #d0d7de;
+      border-radius: 16px;
+      padding: 24px 40px;
+      text-align: center;
+      box-shadow: 0 8px 24px rgba(140, 149, 159, 0.2);
+      margin-bottom: 28px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 220px;
+      animation: pop-in 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    @keyframes pop-in {
+      from { transform: scale(0.85); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .octo-badge-avatar {
+      width: 64px;
+      height: 48px;
+      margin-bottom: 8px;
+    }
+
+    .score-card-label {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: #6e7781;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .score-card-value {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 32px;
+      font-weight: 800;
+      color: #1f2328;
+      letter-spacing: -0.5px;
+    }
+
+    .game-over-title {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 54px;
+      font-weight: 900;
+      color: #4b5563;
+      letter-spacing: 6px;
+      text-transform: uppercase;
+      margin-bottom: 24px;
+      text-shadow: 2px 2px 0px #ffffff;
+      user-select: none;
+    }
+
+    .btn-play-again {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 14px;
+      font-weight: 600;
+      color: #24292f;
+      background: #ffffff;
+      border: 1px solid #d0d7de;
+      border-radius: 6px;
+      padding: 8px 22px;
+      cursor: pointer;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+      transition: all 0.15s ease;
+    }
+
+    .btn-play-again:hover {
+      background: #f6f8fa;
+      border-color: #8c959f;
+      transform: translateY(-1px);
+    }
+
+    /* On-Screen Mobile Controls */
+    .mobile-controls {
+      display: none;
+      position: absolute;
+      bottom: 60px;
+      left: 0;
+      width: 100%;
+      padding: 0 24px;
+      justify-content: space-between;
+      pointer-events: none;
+      z-index: 25;
+    }
+
+    @media (max-width: 768px), (pointer: coarse) {
+      .mobile-controls {
+        display: flex;
+      }
+      .hud-controls-banner {
+        display: none;
+      }
+    }
+
+    .mobile-btn-group {
+      display: flex;
+      gap: 12px;
+      pointer-events: auto;
+    }
+
+    .mobile-btn {
+      width: 56px;
+      height: 56px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.85);
+      border: 2px solid #d0d7de;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      color: #24292f;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.06);
+      active:scale-95;
+    }
+
+    .mobile-btn:active {
+      background: #e5e7eb;
+      transform: scale(0.95);
+    }
+
+    .rainbow-banner {
+      position: absolute;
+      top: 56px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: linear-gradient(90deg, #ec4899, #8b5cf6, #3b82f6, #10b981, #f59e0b);
+      color: white;
+      font-family: ui-monospace, SFMono-Regular, monospace;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 12px;
+      border-radius: 20px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      letter-spacing: 0.5px;
+      pointer-events: none;
+      z-index: 15;
+    }
+
+    .rainbow-banner.active {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container">
+    <div class="top-accent-band"></div>
+
+    <!-- Active Rainbow Companion Banner -->
+    <div id="rainbow-banner" class="rainbow-banner">✨ RAINBOW COMPANION ACTIVE (2X POINTS) ✨</div>
+
+    <!-- Canvas Engine -->
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- HUD Layer -->
+    <div class="hud-layer">
+      <!-- Top Bar -->
+      <div class="hud-top">
+        <div class="hud-hearts" id="hearts-container" title="Player Lives">
+          <!-- Rendered in JS: 3 Hearts -->
+        </div>
+
+        <div class="hud-controls-banner">
+          <span class="key-badge">←</span>
+          <span class="key-badge">→</span>
+          <span>move</span>
+          <span style="color:#d0d7de">|</span>
+          <span class="key-badge">Space</span>
+          <span>jump</span>
+        </div>
+
+        <div class="hud-score-panel">
+          <div class="score-display">Your score: <span id="hud-score">0</span></div>
+          <button id="sound-btn" class="sound-toggle-btn" title="Toggle Sound" aria-label="Toggle Sound">
+            <svg id="sound-icon-on" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+              <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+            </svg>
+            <svg id="sound-icon-off" style="display:none;" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+              <line x1="23" y1="9" x2="17" y2="15"></line>
+              <line x1="17" y1="9" x2="23" y2="15"></line>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Bottom Bar -->
+      <div class="hud-bottom">
+        <div class="hud-meta-info">
+          <span>super-mono / your high score:</span>
+          <strong id="hud-high-score" style="color:#1f2328;">0</strong>
+          <span class="blinking-cursor"></span>
+        </div>
+
+        <button id="exit-btn" class="btn-exit">Exit game</button>
+      </div>
+    </div>
+
+    <!-- Mobile Touch Controls -->
+    <div class="mobile-controls">
+      <div class="mobile-btn-group">
+        <button id="m-btn-left" class="mobile-btn">◀</button>
+        <button id="m-btn-right" class="mobile-btn">▶</button>
+      </div>
+      <div class="mobile-btn-group">
+        <button id="m-btn-jump" class="mobile-btn">▲</button>
+      </div>
+    </div>
+
+    <!-- Game Over Overlay -->
+    <div id="game-over-modal" class="game-over-overlay">
+      <div class="score-card">
+        <!-- SVG Octocat with Rainbow companion preview -->
+        <svg class="octo-badge-avatar" viewBox="0 0 80 50">
+          <!-- Rainbow hair/wings behind cat -->
+          <rect x="18" y="4" width="22" height="6" fill="#ec4899" rx="2" />
+          <rect x="16" y="10" width="26" height="6" fill="#8b5cf6" rx="2" />
+          <rect x="15" y="16" width="28" height="6" fill="#3b82f6" rx="2" />
+          <rect x="16" y="22" width="26" height="6" fill="#10b981" rx="2" />
+          <rect x="18" y="28" width="22" height="6" fill="#f59e0b" rx="2" />
+          <!-- Octocat Silhouette -->
+          <ellipse cx="46" cy="24" rx="16" ry="14" fill="#181717" />
+          <polygon points="34,16 38,4 43,14" fill="#181717" />
+          <polygon points="49,14 54,4 58,16" fill="#181717" />
+          <!-- White Face Mask -->
+          <ellipse cx="46" cy="25" rx="11" ry="8" fill="#ffffff" />
+          <!-- Eyes -->
+          <ellipse cx="42" cy="24" rx="2.2" ry="2.8" fill="#181717" />
+          <ellipse cx="50" cy="24" rx="2.2" ry="2.8" fill="#181717" />
+          <!-- Tentacles -->
+          <rect x="36" y="34" width="4" height="9" rx="2" fill="#181717" />
+          <rect x="42" y="36" width="4" height="9" rx="2" fill="#181717" />
+          <rect x="48" y="36" width="4" height="9" rx="2" fill="#181717" />
+          <rect x="54" y="34" width="4" height="9" rx="2" fill="#181717" />
+        </svg>
+        <div class="score-card-label">YOUR SCORE</div>
+        <div class="score-card-value" id="final-score-val">0</div>
+      </div>
+
+      <div class="game-over-title">GAME OVER</div>
+      <button id="play-again-btn" class="btn-play-again">Play again</button>
+    </div>
+  </div>
+
+  <script>
+    /**
+     * OctoRun - 2D Grid Platformer
+     * Self-contained engine with Web Audio, physics, pixel-art graphics,
+     * patrolling enemies, modular grid platforms, and collectibles.
+     */
+    (function () {
+      'use strict';
+
+      // --- AUDIO ENGINE (Web Audio API) ---
+      class SoundEngine {
+        constructor() {
+          this.ctx = null;
+          this.muted = localStorage.getItem('octo_sound_muted') === 'true';
+        }
+
+        init() {
+          if (!this.ctx) {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (AudioCtx) {
+              this.ctx = new AudioCtx();
+            }
+          }
+          if (this.ctx && this.ctx.state === 'suspended') {
+            this.ctx.resume();
+          }
+        }
+
+        toggleMute() {
+          this.muted = !this.muted;
+          localStorage.setItem('octo_sound_muted', this.muted);
+          return this.muted;
+        }
+
+        playTone(freq, type, duration, startGain = 0.15, endGain = 0.001) {
+          if (this.muted) return;
+          this.init();
+          if (!this.ctx) return;
+
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+
+          osc.type = type;
+          osc.frequency.setValueAtTime(freq, now);
+
+          gain.gain.setValueAtTime(startGain, now);
+          gain.gain.exponentialRampToValueAtTime(Math.max(0.0001, endGain), now + duration);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+
+          osc.start(now);
+          osc.stop(now + duration);
+        }
+
+        playJump() {
+          if (this.muted) return;
+          this.init();
+          if (!this.ctx) return;
+
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(150, now);
+          osc.frequency.exponentialRampToValueAtTime(520, now + 0.12);
+
+          gain.gain.setValueAtTime(0.09, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+
+          osc.start(now);
+          osc.stop(now + 0.14);
+        }
+
+        playCollect(val = 10) {
+          if (this.muted) return;
+          this.init();
+          if (!this.ctx) return;
+
+          const now = this.ctx.currentTime;
+          const notes = val >= 100 
+            ? [523.25, 659.25, 783.99, 1046.50] // C5, E5, G5, C6
+            : val >= 50
+            ? [587.33, 739.99, 880.00]         // D5, F#5, A5
+            : val >= 25
+            ? [659.25, 783.99]                 // E5, G5
+            : [523.25, 659.25];                // C5, E5
+
+          notes.forEach((freq, idx) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, now + idx * 0.05);
+
+            gain.gain.setValueAtTime(0.12, now + idx * 0.05);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.05 + 0.18);
+
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+
+            osc.start(now + idx * 0.05);
+            osc.stop(now + idx * 0.05 + 0.2);
+          });
+        }
+
+        playRainbowPowerup() {
+          if (this.muted) return;
+          this.init();
+          if (!this.ctx) return;
+
+          const now = this.ctx.currentTime;
+          const chords = [440, 554, 659, 830, 880, 1108];
+          chords.forEach((freq, idx) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(freq, now + idx * 0.04);
+
+            gain.gain.setValueAtTime(0.15, now + idx * 0.04);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.04 + 0.25);
+
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+
+            osc.start(now + idx * 0.04);
+            osc.stop(now + idx * 0.04 + 0.28);
+          });
+        }
+
+        playStomp() {
+          if (this.muted) return;
+          this.init();
+          if (!this.ctx) return;
+
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(320, now);
+          osc.frequency.exponentialRampToValueAtTime(90, now + 0.1);
+
+          gain.gain.setValueAtTime(0.18, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+
+          osc.start(now);
+          osc.stop(now + 0.12);
+        }
+
+        playDamage() {
+          if (this.muted) return;
+          this.init();
+          if (!this.ctx) return;
+
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(140, now);
+          osc.frequency.exponentialRampToValueAtTime(40, now + 0.25);
+
+          gain.gain.setValueAtTime(0.2, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+
+          osc.start(now);
+          osc.stop(now + 0.25);
+        }
+
+        playGameOver() {
+          if (this.muted) return;
+          this.init();
+          if (!this.ctx) return;
+
+          const now = this.ctx.currentTime;
+          const gloomyNotes = [329.63, 293.66, 261.63, 220.00, 196.00]; // E4, D4, C4, A3, G3
+          gloomyNotes.forEach((freq, idx) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(freq, now + idx * 0.18);
+
+            gain.gain.setValueAtTime(0.16, now + idx * 0.18);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.18 + 0.4);
+
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+
+            osc.start(now + idx * 0.18);
+            osc.stop(now + idx * 0.18 + 0.45);
+          });
+        }
+      }
+
+      const sounds = new SoundEngine();
+
+      // --- GAME CONSTANTS ---
+      const TILE_SIZE = 24; // 24px grid matching video
+      const GRAVITY = 0.58;
+      const MOVE_SPEED = 4.2;
+      const JUMP_FORCE = -11.4;
+      const MAX_LIVES = 3;
+
+      // --- DOM REFERENCES ---
+      const canvas = document.getElementById('gameCanvas');
+      const ctx = canvas.getContext('2d');
+      const hudScore = document.getElementById('hud-score');
+      const hudHighScore = document.getElementById('hud-high-score');
+      const heartsContainer = document.getElementById('hearts-container');
+      const soundBtn = document.getElementById('sound-btn');
+      const soundIconOn = document.getElementById('sound-icon-on');
+      const soundIconOff = document.getElementById('sound-icon-off');
+      const exitBtn = document.getElementById('exit-btn');
+      const gameOverModal = document.getElementById('game-over-modal');
+      const finalScoreVal = document.getElementById('final-score-val');
+      const playAgainBtn = document.getElementById('play-again-btn');
+      const rainbowBanner = document.getElementById('rainbow-banner');
+
+      // Update sound toggle icons on init
+      function updateSoundIcon() {
+        if (sounds.muted) {
+          soundIconOn.style.display = 'none';
+          soundIconOff.style.display = 'block';
+        } else {
+          soundIconOn.style.display = 'block';
+          soundIconOff.style.display = 'none';
+        }
+      }
+      updateSoundIcon();
+
+      soundBtn.addEventListener('click', () => {
+        sounds.toggleMute();
+        updateSoundIcon();
+      });
+
+      // --- INPUT HANDLING ---
+      const keys = {
+        left: false,
+        right: false,
+        jump: false
+      };
+
+      window.addEventListener('keydown', (e) => {
+        sounds.init();
+        if (e.code === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
+          keys.left = true;
+        } else if (e.code === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+          keys.right = true;
+        } else if (e.code === 'Space' || e.code === 'ArrowUp' || e.key === 'w' || e.key === 'W') {
+          if (!keys.jump) {
+            handleJumpAction();
+          }
+          keys.jump = true;
+          if (e.code === 'Space') e.preventDefault();
+        }
+      });
+
+      window.addEventListener('keyup', (e) => {
+        if (e.code === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
+          keys.left = false;
+        } else if (e.code === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+          keys.right = false;
+        } else if (e.code === 'Space' || e.code === 'ArrowUp' || e.key === 'w' || e.key === 'W') {
+          keys.jump = false;
+        }
+      });
+
+      // Touch controls
+      const mBtnLeft = document.getElementById('m-btn-left');
+      const mBtnRight = document.getElementById('m-btn-right');
+      const mBtnJump = document.getElementById('m-btn-jump');
+
+      const setupTouchBtn = (elem, pressAction, releaseAction) => {
+        const onStart = (e) => {
+          e.preventDefault();
+          sounds.init();
+          pressAction();
+        };
+        const onEnd = (e) => {
+          e.preventDefault();
+          releaseAction();
+        };
+        elem.addEventListener('touchstart', onStart, { passive: false });
+        elem.addEventListener('touchend', onEnd, { passive: false });
+        elem.addEventListener('mousedown', onStart);
+        elem.addEventListener('mouseup', onEnd);
+        elem.addEventListener('mouseleave', onEnd);
+      };
+
+      setupTouchBtn(mBtnLeft, () => { keys.left = true; }, () => { keys.left = false; });
+      setupTouchBtn(mBtnRight, () => { keys.right = true; }, () => { keys.right = false; });
+      setupTouchBtn(mBtnJump, () => {
+        if (!keys.jump) handleJumpAction();
+        keys.jump = true;
+      }, () => { keys.jump = false; });
+
+      // --- GAME STATE ---
+      let score = 0;
+      let highScore = parseInt(localStorage.getItem('octo_game_high_score') || '0', 10);
+      let lives = MAX_LIVES;
+      let isGameOver = false;
+      let screenShake = 0;
+      let frameCount = 0;
+      let camera = { x: 0, y: 0 };
+
+      hudHighScore.textContent = highScore;
+
+      function renderHearts() {
+        heartsContainer.innerHTML = '';
+        for (let i = 0; i < MAX_LIVES; i++) {
+          const heart = document.createElement('div');
+          heart.className = `heart-icon ${i < lives ? '' : 'lost'}`;
+          heart.innerHTML = `
+            <svg viewBox="0 0 24 24" width="22" height="22">
+              <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
+                fill="${i < lives ? '#22c55e' : '#9ca3af'}"
+                stroke="#15803d"
+                stroke-width="1.5"
+              />
+            </svg>
+          `;
+          heartsContainer.appendChild(heart);
+        }
+      }
+      renderHearts();
+
+      // --- LEVEL DATA ARCHITECTURE ---
+      // Modular platforms styled in segmented pixel grid blocks
+      let platforms = [];
+      let enemies = [];
+      let collectibles = [];
+      let floatingTexts = [];
+      let particles = [];
+
+      // Player object
+      const player = {
+        x: 120,
+        y: 200,
+        width: 32,
+        height: 38,
+        vx: 0,
+        vy: 0,
+        facing: 1, // 1: right, -1: left
+        onGround: false,
+        invulnerableTimer: 0,
+        walkFrame: 0,
+        rainbowTimer: 0,
+        companion: {
+          x: 90,
+          y: 190,
+          active: false
+        }
+      };
+
+      // Create an expansive, structured map level closely replicating the video:
+      // Multi-tier stairs, gaps, high routes, bugs, gems, golden chick, companion
+      function buildWorldLevel() {
+        platforms = [];
+        enemies = [];
+        collectibles = [];
+        floatingTexts = [];
+        particles = [];
+
+        // Helper to add platform (in grid units)
+        // gx: grid x, gy: grid y, gw: grid width, gh: grid height (usually 1 block)
+        const addP = (gx, gy, gw, gh = 1) => {
+          platforms.push({
+            x: gx * TILE_SIZE,
+            y: gy * TILE_SIZE,
+            w: gw * TILE_SIZE,
+            h: gh * TILE_SIZE
+          });
+        };
+
+        // Helper to add bug enemy on a platform
+        const addBug = (gx, gy, rangeW) => {
+          enemies.push({
+            x: gx * TILE_SIZE,
+            y: gy * TILE_SIZE - 20,
+            width: 28,
+            height: 20,
+            vx: 1.25,
+            minX: gx * TILE_SIZE,
+            maxX: (gx + rangeW) * TILE_SIZE - 28,
+            animFrame: 0,
+            dead: false
+          });
+        };
+
+        // Helper to add collectible
+        // type: 'yellow' (10), 'orange' (25), 'purple' (50), 'blue' (100), 'quad' (150), 'chick' (200), 'rainbow' (companion)
+        const addC = (gx, gy, type = 'yellow') => {
+          collectibles.push({
+            x: gx * TILE_SIZE + 4,
+            y: gy * TILE_SIZE - 20,
+            width: 16,
+            height: 16,
+            baseY: gy * TILE_SIZE - 20,
+            type: type,
+            collected: false,
+            bobOffset: Math.random() * Math.PI * 2
+          });
+        };
+
+        // --- SECTION 1: STARTING RUNWAY & EARLY STAIRS (Matches video 00:00 - 00:20) ---
+        addP(2, 17, 12);     // Starting lower ground
+        addP(15, 15, 5);     // Step up 1
+        addP(21, 13, 6);     // Step up 2
+        addP(28, 11, 8);     // High tier terrace
+        addP(37, 13, 6);     // Step down
+        addP(44, 15, 6);     // Lower bridge
+
+        // Enemies in Section 1
+        addBug(29, 11, 7);   // Bug on high terrace
+        addBug(45, 15, 5);   // Bug on lower bridge
+
+        // Collectibles in Section 1
+        addC(22, 12, 'yellow');
+        addC(31, 10, 'orange');
+        addC(35, 10, 'purple');
+        addC(40, 12, 'yellow');
+        addC(47, 14, 'orange');
+
+        // --- SECTION 2: FLOATING LEDGES & DUCK EASTER EGG (Matches 00:20 - 00:50) ---
+        addP(52, 16, 7);
+        addP(61, 14, 5);
+        addP(67, 12, 9);     // Middle highway
+        addP(78, 10, 8);     // Top ledge
+        addP(88, 12, 10);    // High split
+        addP(68, 18, 8);     // Bottom alternate path
+        addP(78, 20, 9);     // Safe lower floor
+
+        // Cute Golden Duck collectible!
+        addC(54, 15, 'chick');
+        addC(63, 13, 'green');
+        addC(70, 11, 'quad'); // 4-quadrant rainbow block
+        addC(73, 11, 'blue');
+        addC(80, 9, 'purple');
+        addC(84, 9, 'yellow');
+
+        // Enemies in Section 2
+        addBug(68, 12, 8);
+        addBug(79, 10, 7);
+        addBug(69, 18, 7);
+
+        // --- SECTION 3: RAINBOW COMPANION SHRINE (Matches 00:55 - 01:15) ---
+        addP(100, 13, 6);
+        addP(108, 11, 5);
+        addP(115, 8, 8);     // High cloud altar
+        addP(125, 10, 7);
+        addP(134, 13, 9);
+        addP(103, 18, 12);   // Lower safety road
+        addP(118, 19, 14);
+
+        // Rainbow Companion egg/powerup on high altar!
+        addC(119, 7, 'rainbow');
+        addC(116, 7, 'blue');
+        addC(122, 7, 'quad');
+
+        addC(102, 12, 'yellow');
+        addC(110, 10, 'orange');
+        addC(128, 9, 'pink');
+        addC(136, 12, 'yellow');
+        addC(140, 12, 'green');
+
+        // Bugs
+        addBug(109, 11, 4);
+        addBug(126, 10, 6);
+        addBug(105, 18, 10);
+        addBug(120, 19, 12);
+
+        // --- SECTION 4: THE GAUNTLET & HIGH CHICK (Matches 01:15 - 01:35) ---
+        addP(145, 14, 5);
+        addP(152, 12, 6);
+        addP(160, 10, 7);
+        addP(169, 8, 10);    // Highest terrace
+        addP(181, 10, 6);
+        addP(189, 13, 8);
+        addP(199, 15, 12);
+        addP(155, 18, 14);   // Lower escape run
+        addP(173, 19, 15);
+
+        addC(153, 11, 'orange');
+        addC(162, 9, 'purple');
+        addC(172, 7, 'chick'); // Another golden duckling!
+        addC(174, 7, 'blue');
+        addC(176, 7, 'quad');
+        addC(183, 9, 'pink');
+        addC(192, 12, 'yellow');
+        addC(202, 14, 'quad');
+
+        addBug(153, 12, 5);
+        addBug(161, 10, 6);
+        addBug(170, 8, 9);
+        addBug(190, 13, 7);
+        addBug(157, 18, 12);
+        addBug(175, 19, 13);
+
+        // Seamless loop end section connecting back
+        addP(213, 16, 14);
+        addC(215, 15, 'rainbow');
+      }
+
+      function resetPlayer() {
+        player.x = 120;
+        player.y = 150;
+        player.vx = 0;
+        player.vy = 0;
+        player.invulnerableTimer = 120; // Brief grace period
+        player.rainbowTimer = 0;
+        player.companion.active = false;
+        rainbowBanner.classList.remove('active');
+      }
+
+      function initGame() {
+        score = 0;
+        lives = MAX_LIVES;
+        isGameOver = false;
+        gameOverModal.classList.remove('visible');
+        hudScore.textContent = '0';
+        renderHearts();
+        buildWorldLevel();
+        resetPlayer();
+      }
+
+      function handleJumpAction() {
+        if (isGameOver) return;
+        if (player.onGround) {
+          player.vy = JUMP_FORCE;
+          player.onGround = false;
+          sounds.playJump();
+        }
+      }
+
+      function triggerDamage() {
+        if (player.invulnerableTimer > 0 || isGameOver) return;
+
+        // If rainbow companion is active, player is protected!
+        if (player.rainbowTimer > 0) return;
+
+        lives--;
+        renderHearts();
+        sounds.playDamage();
+        screenShake = 16;
+        player.invulnerableTimer = 110; // ~1.8 seconds invulnerability
+
+        if (lives <= 0) {
+          triggerGameOver();
+        } else {
+          // Bounce back slightly
+          player.vy = -6;
+          player.vx = -player.facing * 4;
+        }
+      }
+
+      function triggerGameOver() {
+        isGameOver = true;
+        sounds.playGameOver();
+        finalScoreVal.textContent = score;
+
+        if (score > highScore) {
+          highScore = score;
+          localStorage.setItem('octo_game_high_score', highScore);
+          hudHighScore.textContent = highScore;
+        }
+
+        setTimeout(() => {
+          gameOverModal.classList.add('visible');
+        }, 500);
+      }
+
+      exitBtn.addEventListener('click', () => {
+        sounds.init();
+        if (!isGameOver) {
+          triggerGameOver();
+        }
+      });
+
+      playAgainBtn.addEventListener('click', () => {
+        sounds.init();
+        initGame();
+      });
+
+      // --- PIXEL GRAPHICS PROCEDURAL RENDERERS ---
+
+      /**
+       * Render the Octocat Player
+       */
+      function drawOctocat(ctx, p) {
+        ctx.save();
+        ctx.translate(Math.round(p.x + p.width / 2), Math.round(p.y + p.height / 2));
+        ctx.scale(p.facing, 1);
+
+        // Invulnerability flicker
+        if (p.invulnerableTimer > 0) {
+          if (Math.floor(frameCount / 4) % 2 === 0) {
+            ctx.globalAlpha = 0.3;
+          }
+        }
+
+        // Rainbow aura when companion is active
+        if (p.rainbowTimer > 0) {
+          ctx.save();
+          const hue = (frameCount * 7) % 360;
+          ctx.strokeStyle = `hsl(${hue}, 90%, 65%)`;
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.arc(0, -4, 22, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        const headY = -8;
+
+        // 1. Cat Ears
+        ctx.fillStyle = '#181717';
+        // Left Ear
+        ctx.beginPath();
+        ctx.moveTo(-11, headY - 4);
+        ctx.lineTo(-8, headY - 17);
+        ctx.lineTo(-2, headY - 7);
+        ctx.fill();
+        // Right Ear
+        ctx.beginPath();
+        ctx.moveTo(11, headY - 4);
+        ctx.lineTo(8, headY - 17);
+        ctx.lineTo(2, headY - 7);
+        ctx.fill();
+
+        // Inner ears
+        ctx.fillStyle = '#4b5563';
+        ctx.beginPath();
+        ctx.moveTo(-9, headY - 5);
+        ctx.lineTo(-7, headY - 14);
+        ctx.lineTo(-3, headY - 7);
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.moveTo(9, headY - 5);
+        ctx.lineTo(7, headY - 14);
+        ctx.lineTo(3, headY - 7);
+        ctx.fill();
+
+        // 2. Head (Black rounded circle)
+        ctx.fillStyle = '#181717';
+        ctx.beginPath();
+        ctx.arc(0, headY, 13.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 3. Face Mask (White patch)
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.ellipse(1, headY + 1.5, 9, 7.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 4. Eyes (Cute black ovals)
+        ctx.fillStyle = '#181717';
+        ctx.beginPath();
+        ctx.ellipse(-2.5, headY + 1, 1.8, 2.5, 0, 0, Math.PI * 2);
+        ctx.ellipse(4.5, headY + 1, 1.8, 2.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Tiny eye glints
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(-2, headY - 0.5, 1, 1.2);
+        ctx.fillRect(5, headY - 0.5, 1, 1.2);
+
+        // Cute nose
+        ctx.fillStyle = '#181717';
+        ctx.fillRect(1, headY + 4, 1.5, 1.2);
+
+        // Whiskers
+        ctx.strokeStyle = '#181717';
+        ctx.lineWidth = 1;
+        // Left whiskers
+        ctx.beginPath();
+        ctx.moveTo(-9, headY + 2);
+        ctx.lineTo(-15, headY);
+        ctx.moveTo(-9, headY + 4);
+        ctx.lineTo(-14, headY + 5);
+        // Right whiskers
+        ctx.moveTo(9, headY + 2);
+        ctx.lineTo(15, headY);
+        ctx.moveTo(9, headY + 4);
+        ctx.lineTo(14, headY + 5);
+        ctx.stroke();
+
+        // 5. Torso
+        ctx.fillStyle = '#181717';
+        ctx.fillRect(-7, headY + 10, 14, 8);
+
+        // 6. Tentacles / Legs
+        const legY = headY + 18;
+        const isMoving = Math.abs(p.vx) > 0.2 && p.onGround;
+
+        // Animated tentacles
+        for (let i = 0; i < 4; i++) {
+          const tOffset = (i - 1.5) * 4;
+          let legH = 8;
+          let bend = 0;
+
+          if (isMoving) {
+            bend = Math.sin(p.walkFrame * 0.4 + i * 1.5) * 4.5;
+          } else if (!p.onGround) {
+            bend = (i < 2 ? -2 : 3);
+            legH = 6;
+          }
+
+          ctx.fillStyle = '#181717';
+          ctx.beginPath();
+          ctx.roundRect(tOffset - 1.5, legY, 3.2, legH + bend, 1.5);
+          ctx.fill();
+        }
+
+        ctx.restore();
+      }
+
+      /**
+       * Render the Rainbow Companion Creature
+       */
+      function drawCompanion(ctx, comp) {
+        ctx.save();
+        ctx.translate(Math.round(comp.x), Math.round(comp.y));
+
+        // Floating rainbow tail / feathers
+        const colors = ['#ec4899', '#8b5cf6', '#3b82f6', '#10b981', '#f59e0b'];
+        for (let i = 0; i < colors.length; i++) {
+          const wave = Math.sin(frameCount * 0.15 + i * 0.8) * 3;
+          ctx.fillStyle = colors[i];
+          ctx.fillRect(-14 - i * 3, -8 + i * 3.2 + wave, 6, 4);
+        }
+
+        // Companion Body (Cute pastel green/cyan creature)
+        ctx.fillStyle = '#6ee7b7';
+        ctx.beginPath();
+        ctx.roundRect(-8, -10, 16, 15, 5);
+        ctx.fill();
+
+        // Little ears
+        ctx.fillStyle = '#ec4899';
+        ctx.beginPath();
+        ctx.moveTo(-6, -10);
+        ctx.lineTo(-4, -15);
+        ctx.lineTo(-1, -10);
+        ctx.moveTo(1, -10);
+        ctx.lineTo(4, -15);
+        ctx.lineTo(6, -10);
+        ctx.fill();
+
+        // Eyes
+        ctx.fillStyle = '#111827';
+        ctx.fillRect(-4, -6, 2, 3);
+        ctx.fillRect(2, -6, 2, 3);
+
+        // Cheeks
+        ctx.fillStyle = '#f472b6';
+        ctx.fillRect(-6, -3, 2, 1.5);
+        ctx.fillRect(4, -3, 2, 1.5);
+
+        ctx.restore();
+      }
+
+      /**
+       * Render Patrolling Beetle Enemy
+       */
+      function drawBug(ctx, bug) {
+        ctx.save();
+        ctx.translate(Math.round(bug.x + bug.width / 2), Math.round(bug.y + bug.height / 2));
+        const dir = bug.vx >= 0 ? 1 : -1;
+        ctx.scale(dir, 1);
+
+        // 1. Legs crawling
+        ctx.strokeStyle = '#111827';
+        ctx.lineWidth = 1.8;
+        const legCycle = Math.sin(bug.animFrame * 0.35) * 3;
+
+        // Front leg
+        ctx.beginPath();
+        ctx.moveTo(6, 4);
+        ctx.lineTo(10 + legCycle, 9);
+        // Mid leg
+        ctx.moveTo(0, 4);
+        ctx.lineTo(0 - legCycle, 9);
+        // Back leg
+        ctx.moveTo(-6, 4);
+        ctx.lineTo(-10 + legCycle, 9);
+        ctx.stroke();
+
+        // 2. Main Carapace Shell (Dark Beetle)
+        ctx.fillStyle = '#1f2937';
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 11, 7.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 3. Colored Armor Plates (Stripes matching video: Orange & Green)
+        ctx.fillStyle = '#ea580c'; // Bright orange
+        ctx.fillRect(-6, -4.5, 5, 8);
+        ctx.fillStyle = '#16a34a'; // Emerald green
+        ctx.fillRect(1, -4.5, 5, 8);
+
+        // Shell center seam line
+        ctx.strokeStyle = '#111827';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(-9, 0);
+        ctx.lineTo(9, 0);
+        ctx.stroke();
+
+        // 4. Head & Antennae
+        ctx.fillStyle = '#111827';
+        ctx.beginPath();
+        ctx.arc(9, 0, 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Antennae
+        ctx.strokeStyle = '#ea580c';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(11, -1);
+        ctx.lineTo(15, -4);
+        ctx.moveTo(11, 1);
+        ctx.lineTo(15, 4);
+        ctx.stroke();
+
+        ctx.restore();
+      }
+
+      /**
+       * Render Collectibles (Boxes, Rainbow Block, Cute Golden Chick)
+       */
+      function drawCollectible(ctx, c) {
+        ctx.save();
+        const floatY = c.baseY + Math.sin(frameCount * 0.08 + c.bobOffset) * 4;
+        ctx.translate(Math.round(c.x), Math.round(floatY));
+
+        if (c.type === 'chick') {
+          // Cute Golden Duckling / Chick easter egg!
+          ctx.fillStyle = '#facc15'; // Golden yellow body
+          ctx.beginPath();
+          ctx.ellipse(8, 9, 8, 7, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Head
+          ctx.beginPath();
+          ctx.arc(11, 4, 5, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Orange Beak
+          ctx.fillStyle = '#f97316';
+          ctx.beginPath();
+          ctx.moveTo(15, 3);
+          ctx.lineTo(19, 5);
+          ctx.lineTo(15, 7);
+          ctx.fill();
+
+          // Black Eye
+          ctx.fillStyle = '#111827';
+          ctx.fillRect(13, 3, 1.5, 2);
+
+          // Little Wing
+          ctx.fillStyle = '#eab308';
+          ctx.beginPath();
+          ctx.ellipse(6, 9, 4, 2.5, 0.2, 0, Math.PI * 2);
+          ctx.fill();
+
+        } else if (c.type === 'rainbow') {
+          // Rainbow Companion Core Egg/Gem
+          const colors = ['#ec4899', '#8b5cf6', '#3b82f6', '#10b981', '#f59e0b'];
+          for (let i = 0; i < colors.length; i++) {
+            ctx.fillStyle = colors[i];
+            ctx.fillRect(i * 3.5, 0, 3.5, 16);
+          }
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 1.5;
+          ctx.strokeRect(0, 0, 18, 16);
+
+        } else if (c.type === 'quad') {
+          // 4-quadrant multi-color puzzle block
+          const sz = 8;
+          ctx.fillStyle = '#ef4444'; ctx.fillRect(0, 0, sz, sz);
+          ctx.fillStyle = '#3b82f6'; ctx.fillRect(sz, 0, sz, sz);
+          ctx.fillStyle = '#eab308'; ctx.fillRect(0, sz, sz, sz);
+          ctx.fillStyle = '#10b981'; ctx.fillRect(sz, sz, sz, sz);
+
+          ctx.strokeStyle = '#1f2937';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(0, 0, sz * 2, sz * 2);
+
+        } else {
+          // Modular gem cube
+          let fill = '#eab308'; // yellow
+          let border = '#ca8a04';
+          if (c.type === 'orange') { fill = '#f97316'; border = '#c2410c'; }
+          else if (c.type === 'purple' || c.type === 'pink') { fill = '#a855f7'; border = '#7e22ce'; }
+          else if (c.type === 'green') { fill = '#22c55e'; border = '#15803d'; }
+          else if (c.type === 'blue') { fill = '#3b82f6'; border = '#1d4ed8'; }
+
+          ctx.fillStyle = fill;
+          ctx.fillRect(0, 0, 14, 14);
+
+          // Highlight and border
+          ctx.fillStyle = 'rgba(255,255,255,0.4)';
+          ctx.fillRect(2, 2, 4, 4);
+
+          ctx.strokeStyle = border;
+          ctx.lineWidth = 1.5;
+          ctx.strokeRect(0, 0, 14, 14);
+        }
+
+        ctx.restore();
+      }
+
+      /**
+       * Render Platforms matching the modular segmented dark-grey blocks in the video
+       */
+      function drawPlatform(ctx, p) {
+        ctx.save();
+        const numBlocks = Math.round(p.w / TILE_SIZE);
+
+        for (let i = 0; i < numBlocks; i++) {
+          const bx = p.x + i * TILE_SIZE;
+          const by = p.y;
+          const bw = TILE_SIZE;
+          const bh = p.h;
+
+          // Main solid block fill (dark grey)
+          ctx.fillStyle = '#555b62';
+          ctx.fillRect(bx, by, bw, bh);
+
+          // Subtle top highlight line
+          ctx.fillStyle = '#6b7280';
+          ctx.fillRect(bx, by, bw, 2);
+
+          // Segment border (giving modular grid block look)
+          ctx.strokeStyle = '#374151';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(bx + 0.5, by + 0.5, bw - 1, bh - 1);
+
+          // Inner dot or texture
+          ctx.fillStyle = '#4b5563';
+          ctx.fillRect(bx + bw / 2 - 1, by + bh / 2 - 1, 2, 2);
+        }
+
+        ctx.restore();
+      }
+
+      // --- MAIN UPDATE & PHYSICS LOOP ---
+      function update() {
+        frameCount++;
+
+        if (screenShake > 0) {
+          screenShake *= 0.88;
+          if (screenShake < 0.2) screenShake = 0;
+        }
+
+        if (isGameOver) {
+          return;
+        }
+
+        // 1. Invulnerability countdown
+        if (player.invulnerableTimer > 0) {
+          player.invulnerableTimer--;
+        }
+
+        // 2. Rainbow companion countdown
+        if (player.rainbowTimer > 0) {
+          player.rainbowTimer--;
+          if (player.rainbowTimer <= 0) {
+            player.companion.active = false;
+            rainbowBanner.classList.remove('active');
+          } else {
+            // Spawn rainbow sparkle particles
+            if (frameCount % 3 === 0) {
+              const hues = ['#ec4899', '#8b5cf6', '#3b82f6', '#10b981', '#f59e0b'];
+              particles.push({
+                x: player.x + Math.random() * player.width,
+                y: player.y + Math.random() * player.height,
+                vx: (Math.random() - 0.5) * 1.5,
+                vy: -Math.random() * 2,
+                color: hues[Math.floor(Math.random() * hues.length)],
+                size: 3 + Math.random() * 3,
+                life: 30
+              });
+            }
+          }
+        }
+
+        // 3. Player Horizontal Movement
+        if (keys.left) {
+          player.vx = -MOVE_SPEED;
+          player.facing = -1;
+          player.walkFrame++;
+        } else if (keys.right) {
+          player.vx = MOVE_SPEED;
+          player.facing = 1;
+          player.walkFrame++;
+        } else {
+          player.vx *= 0.65;
+          if (Math.abs(player.vx) < 0.1) player.vx = 0;
+        }
+
+        // 4. Player Gravity & Vertical Movement
+        player.vy += GRAVITY;
+        if (player.vy > 12) player.vy = 12;
+
+        // Apply X movement and check horizontal collisions
+        player.x += player.vx;
+        for (let p of platforms) {
+          if (checkAABB(player, p)) {
+            if (player.vx > 0) {
+              player.x = p.x - player.width;
+            } else if (player.vx < 0) {
+              player.x = p.x + p.w;
+            }
+            player.vx = 0;
+          }
+        }
+
+        // Apply Y movement and check vertical collisions
+        player.y += player.vy;
+        player.onGround = false;
+
+        for (let p of platforms) {
+          if (checkAABB(player, p)) {
+            if (player.vy > 0) { // Falling down onto platform
+              player.y = p.y - player.height;
+              player.vy = 0;
+              player.onGround = true;
+            } else if (player.vy < 0) { // Jumping into ceiling
+              player.y = p.y + p.h;
+              player.vy = 0;
+            }
+          }
+        }
+
+        // Pit death check (falling off the bottom of the world)
+        if (player.y > 680) {
+          triggerDamage();
+          // Reset to nearest platform or start
+          player.x = Math.max(120, player.x - 240);
+          player.y = 120;
+          player.vy = 0;
+        }
+
+        // 5. Update Companion Smooth Follow
+        if (player.companion.active) {
+          const targetX = player.x - player.facing * 28;
+          const targetY = player.y - 18 + Math.sin(frameCount * 0.1) * 6;
+          player.companion.x += (targetX - player.companion.x) * 0.15;
+          player.companion.y += (targetY - player.companion.y) * 0.15;
+        }
+
+        // 6. Update Enemies (Patrolling Bugs)
+        for (let bug of enemies) {
+          if (bug.dead) continue;
+
+          bug.animFrame++;
+          bug.x += bug.vx;
+
+          // Check if hitting turnaround bounds
+          if (bug.x <= bug.minX) {
+            bug.x = bug.minX;
+            bug.vx = Math.abs(bug.vx);
+          } else if (bug.x >= bug.maxX) {
+            bug.x = bug.maxX;
+            bug.vx = -Math.abs(bug.vx);
+          }
+
+          // Enemy collision with player
+          if (checkAABB(player, bug)) {
+            // Check if player landed on top of bug (Squash mechanic)
+            const playerBottomPrev = (player.y + player.height) - player.vy;
+            const isFallingOnTop = player.vy > 0 && playerBottomPrev <= bug.y + 10;
+
+            if (isFallingOnTop || player.rainbowTimer > 0) {
+              // Squash enemy!
+              bug.dead = true;
+              sounds.playStomp();
+              player.vy = JUMP_FORCE * 0.75; // Bounce off enemy
+              const pts = (player.rainbowTimer > 0) ? 100 : 50;
+              addScore(pts, bug.x, bug.y);
+
+              // Spawn squish particles
+              for (let i = 0; i < 8; i++) {
+                particles.push({
+                  x: bug.x + 14,
+                  y: bug.y + 10,
+                  vx: (Math.random() - 0.5) * 4,
+                  vy: (Math.random() - 0.5) * 4,
+                  color: i % 2 === 0 ? '#ea580c' : '#16a34a',
+                  size: 3,
+                  life: 20
+                });
+              }
+            } else {
+              triggerDamage();
+            }
+          }
+        }
+
+        // 7. Update Collectibles
+        for (let c of collectibles) {
+          if (c.collected) continue;
+
+          if (checkAABB(player, { x: c.x, y: c.baseY, w: c.width, h: c.height })) {
+            c.collected = true;
+
+            if (c.type === 'rainbow') {
+              // Activate Rainbow Companion!
+              player.rainbowTimer = 60 * 15; // 15 seconds
+              player.companion.active = true;
+              player.companion.x = player.x - 30;
+              player.companion.y = player.y;
+              rainbowBanner.classList.add('active');
+              sounds.playRainbowPowerup();
+              addScore(250, c.x, c.y);
+            } else {
+              let pts = 10;
+              if (c.type === 'orange') pts = 25;
+              else if (c.type === 'purple' || c.type === 'pink') pts = 50;
+              else if (c.type === 'blue') pts = 100;
+              else if (c.type === 'quad') pts = 150;
+              else if (c.type === 'chick') pts = 200;
+
+              // Rainbow multiplier
+              if (player.rainbowTimer > 0) pts *= 2;
+
+              sounds.playCollect(pts);
+              addScore(pts, c.x, c.y);
+            }
+          }
+        }
+
+        // 8. Update Floating Texts
+        for (let i = floatingTexts.length - 1; i >= 0; i--) {
+          const ft = floatingTexts[i];
+          ft.y -= 1.1;
+          ft.alpha -= 0.022;
+          if (ft.alpha <= 0) {
+            floatingTexts.splice(i, 1);
+          }
+        }
+
+        // 9. Update Particles
+        for (let i = particles.length - 1; i >= 0; i--) {
+          const p = particles[i];
+          p.x += p.vx;
+          p.y += p.vy;
+          p.life--;
+          if (p.life <= 0) {
+            particles.splice(i, 1);
+          }
+        }
+
+        // 10. Update Camera Tracking
+        // Smoothly follow player horizontally with comfortable forward lead
+        const targetCamX = player.x - canvas.width * 0.35;
+        camera.x += (targetCamX - camera.x) * 0.08;
+        if (camera.x < 0) camera.x = 0;
+
+        // Subtle vertical dampening
+        const targetCamY = player.y - canvas.height * 0.55;
+        camera.y += (targetCamY - camera.y) * 0.05;
+        if (camera.y < -40) camera.y = -40;
+      }
+
+      function addScore(pts, x, y) {
+        score += pts;
+        hudScore.textContent = score;
+
+        floatingTexts.push({
+          text: `+${pts}`,
+          x: x,
+          y: y - 10,
+          alpha: 1.0
+        });
+      }
+
+      // Axis-Aligned Bounding Box Collision
+      function checkAABB(r1, r2) {
+        const w1 = r1.width || r1.w;
+        const h1 = r1.height || r1.h;
+        const w2 = r2.width || r2.w;
+        const h2 = r2.height || r2.h;
+        return (
+          r1.x < r2.x + w2 &&
+          r1.x + w1 > r2.x &&
+          r1.y < r2.y + h2 &&
+          r1.y + h1 > r2.y
+        );
+      }
+
+      // --- RENDERING PIPELINE ---
+      function render() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        ctx.save();
+
+        // Screen shake
+        if (screenShake > 0) {
+          const shakeX = (Math.random() - 0.5) * screenShake;
+          const shakeY = (Math.random() - 0.5) * screenShake;
+          ctx.translate(shakeX, shakeY);
+        }
+
+        // 1. Draw Minimalist Technical Engineering Grid Background
+        drawBackgroundGrid(ctx);
+
+        // 2. Camera Transform
+        ctx.save();
+        ctx.translate(-Math.round(camera.x), -Math.round(camera.y));
+
+        // Draw Platforms
+        for (let p of platforms) {
+          drawPlatform(ctx, p);
+        }
+
+        // Draw Collectibles
+        for (let c of collectibles) {
+          if (!c.collected) {
+            drawCollectible(ctx, c);
+          }
+        }
+
+        // Draw Enemies
+        for (let bug of enemies) {
+          if (!bug.dead) {
+            drawBug(ctx, bug);
+          }
+        }
+
+        // Draw Rainbow Companion (if active)
+        if (player.companion.active) {
+          drawCompanion(ctx, player.companion);
+        }
+
+        // Draw Particles
+        for (let p of particles) {
+          ctx.save();
+          ctx.fillStyle = p.color;
+          ctx.globalAlpha = Math.max(0, p.life / 30);
+          ctx.fillRect(p.x, p.y, p.size, p.size);
+          ctx.restore();
+        }
+
+        // Draw Octocat Player
+        drawOctocat(ctx, player);
+
+        // Draw Floating Score Indicators (+10, +25, etc.)
+        for (let ft of floatingTexts) {
+          ctx.save();
+          ctx.globalAlpha = ft.alpha;
+          ctx.font = 'bold 14px ui-monospace, SFMono-Regular, monospace';
+          ctx.fillStyle = '#1f2328';
+          ctx.fillText(ft.text, ft.x, ft.y);
+          ctx.restore();
+        }
+
+        ctx.restore(); // Restore camera transform
+        ctx.restore(); // Restore screen shake
+      }
+
+      function drawBackgroundGrid(ctx) {
+        // Subtle engineering grid aligned to camera movement
+        const gridSize = TILE_SIZE;
+        const offsetX = -(camera.x % gridSize);
+        const offsetY = -(camera.y % gridSize);
+
+        ctx.strokeStyle = '#e5e7eb';
+        ctx.lineWidth = 1;
+
+        ctx.beginPath();
+        // Vertical grid lines
+        for (let x = offsetX; x < canvas.width; x += gridSize) {
+          ctx.moveTo(x + 0.5, 0);
+          ctx.lineTo(x + 0.5, canvas.height);
+        }
+        // Horizontal grid lines
+        for (let y = offsetY; y < canvas.height; y += gridSize) {
+          ctx.moveTo(0, y + 0.5);
+          ctx.lineTo(canvas.width, y + 0.5);
+        }
+        ctx.stroke();
+      }
+
+      // --- RESIZE & ANIMATION LOOP ---
+      function resizeCanvas() {
+        const container = document.getElementById('game-container');
+        canvas.width = container.clientWidth;
+        canvas.height = container.clientHeight;
+      }
+
+      window.addEventListener('resize', resizeCanvas);
+      resizeCanvas();
+
+      // Start game
+      initGame();
+
+      function gameLoop() {
+        update();
+        render();
+        requestAnimationFrame(gameLoop);
+      }
+      requestAnimationFrame(gameLoop);
+
+    })();
+  </script>
+</body>
+</html>
