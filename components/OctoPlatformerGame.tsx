@@ -57,6 +57,7 @@ const JUMP_FORCE = -11.4;
 const SCROLL_SPEED = 2.6; // Continuous forward camera speed
 const MOVE_SPEED = 3.2;   // Relative player adjust speed
 const MAX_JUMPS = 4;      // Allow jumping up to 4 times before hitting ground (multi-jump)
+const RAINBOW_DURATION = 60 * 15; // 15 seconds at 60 FPS
 
 export default function OctoPlatformerGame({
   onOpenCodeViewer,
@@ -66,6 +67,8 @@ export default function OctoPlatformerGame({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
+  const rainbowBarRef = useRef<HTMLDivElement | null>(null);
+  const rainbowTextRef = useRef<HTMLSpanElement | null>(null);
 
   const [score, setScore] = useState<number>(0);
   const [highScore, setHighScore] = useState<number>(() => {
@@ -610,6 +613,16 @@ export default function OctoPlatformerGame({
 
         if (state.player.rainbowTimer > 0) {
           state.player.rainbowTimer--;
+          const pct = Math.max(0, (state.player.rainbowTimer / RAINBOW_DURATION) * 100);
+          const remainingSec = (state.player.rainbowTimer / 60).toFixed(1);
+
+          if (rainbowBarRef.current) {
+            rainbowBarRef.current.style.width = `${pct}%`;
+          }
+          if (rainbowTextRef.current) {
+            rainbowTextRef.current.textContent = `${remainingSec}s`;
+          }
+
           if (state.player.rainbowTimer <= 0) {
             state.player.companion.active = false;
             setIsRainbowActive(false);
@@ -800,11 +813,13 @@ export default function OctoPlatformerGame({
           if (checkAABB(state.player, { x: c.x, y: c.baseY, width: c.width, height: c.height })) {
             c.collected = true;
             if (c.type === 'rainbow') {
-              state.player.rainbowTimer = 60 * 15;
+              state.player.rainbowTimer = RAINBOW_DURATION;
               state.player.companion.active = true;
               state.player.companion.x = state.player.x - 30;
               state.player.companion.y = state.player.y;
               setIsRainbowActive(true);
+              if (rainbowBarRef.current) rainbowBarRef.current.style.width = '100%';
+              if (rainbowTextRef.current) rainbowTextRef.current.textContent = '15.0s';
               playSound('rainbow');
               state.score += 250;
               setScore(state.score);
@@ -1230,10 +1245,26 @@ export default function OctoPlatformerGame({
       {/* Top decorative purple band */}
       <div className="absolute top-0 left-0 w-full h-[12px] bg-gradient-to-r from-purple-600 via-fuchsia-500 to-indigo-600 z-20 pointer-events-none" />
 
-      {/* Rainbow Active Banner */}
+      {/* Rainbow Active Banner with Progress Bar & Countdown Timer */}
       {isRainbowActive && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-pink-500 via-purple-500 to-amber-500 text-white font-mono text-xs font-bold px-4 py-1 rounded-full shadow-md z-30 pointer-events-none tracking-wide animate-pulse">
-          ✨ RAINBOW COMPANION ACTIVE (2X POINTS & SHIELD) ✨
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5 z-30 pointer-events-none select-none animate-in fade-in zoom-in-95 duration-200">
+          <div className="bg-gradient-to-r from-pink-500 via-purple-500 to-amber-500 text-white font-mono text-xs font-bold px-4 py-1.5 rounded-full shadow-lg tracking-wide flex items-center gap-2 border border-white/30 backdrop-blur-xs">
+            <span className="text-sm leading-none animate-pulse">✨</span>
+            <span>RAINBOW COMPANION ACTIVE (2X & SHIELD)</span>
+            <span className="text-white/60">|</span>
+            <span ref={rainbowTextRef} className="font-mono font-extrabold text-amber-200 tabular-nums">
+              15.0s
+            </span>
+          </div>
+
+          {/* Smooth Rainbow Progress Bar Track */}
+          <div className="w-56 sm:w-72 h-2.5 bg-slate-900/50 backdrop-blur-xs rounded-full overflow-hidden p-0.5 border border-white/40 shadow-sm">
+            <div
+              ref={rainbowBarRef}
+              className="h-full rounded-full bg-gradient-to-r from-amber-400 via-pink-400 to-cyan-400 transition-[width] duration-75 ease-linear shadow-xs"
+              style={{ width: '100%' }}
+            />
+          </div>
         </div>
       )}
 

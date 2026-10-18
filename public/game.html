@@ -364,26 +364,72 @@
 
     .rainbow-banner {
       position: absolute;
-      top: 56px;
+      top: 50px;
       left: 50%;
       transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      letter-spacing: 0.5px;
+      pointer-events: none;
+      z-index: 25;
+    }
+
+    .rainbow-banner.active {
+      opacity: 1;
+    }
+
+    .rainbow-banner-content {
       background: linear-gradient(90deg, #ec4899, #8b5cf6, #3b82f6, #10b981, #f59e0b);
       color: white;
       font-family: ui-monospace, SFMono-Regular, monospace;
       font-size: 11px;
       font-weight: 700;
-      padding: 3px 12px;
+      padding: 4px 14px;
       border-radius: 20px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-      opacity: 0;
-      transition: opacity 0.2s ease;
-      letter-spacing: 0.5px;
-      pointer-events: none;
-      z-index: 15;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.18);
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
 
-    .rainbow-banner.active {
-      opacity: 1;
+    .rainbow-sparkle {
+      font-size: 13px;
+      line-height: 1;
+      display: inline-block;
+      animation: pulse 1s infinite;
+    }
+
+    .rainbow-sep {
+      opacity: 0.5;
+    }
+
+    .rainbow-timer-digits {
+      font-weight: 800;
+      color: #fef08a;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .rainbow-progress-track {
+      width: 240px;
+      height: 8px;
+      background: rgba(15, 23, 42, 0.5);
+      border-radius: 10px;
+      padding: 1.5px;
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+      overflow: hidden;
+    }
+
+    .rainbow-progress-fill {
+      height: 100%;
+      border-radius: 8px;
+      background: linear-gradient(90deg, #facc15, #ec4899, #06b6d4);
+      transition: width 0.08s linear;
     }
   </style>
 </head>
@@ -391,8 +437,18 @@
   <div id="game-container">
     <div class="top-accent-band"></div>
 
-    <!-- Active Rainbow Companion Banner -->
-    <div id="rainbow-banner" class="rainbow-banner">✨ RAINBOW COMPANION ACTIVE (2X POINTS & SHIELD) ✨</div>
+    <!-- Active Rainbow Companion Banner with Progress Bar & Countdown -->
+    <div id="rainbow-banner" class="rainbow-banner">
+      <div class="rainbow-banner-content">
+        <span class="rainbow-sparkle">✨</span>
+        <span>RAINBOW COMPANION ACTIVE (2X & SHIELD)</span>
+        <span class="rainbow-sep">|</span>
+        <span id="rainbow-timer-val" class="rainbow-timer-digits">15.0s</span>
+      </div>
+      <div class="rainbow-progress-track">
+        <div id="rainbow-progress-fill" class="rainbow-progress-fill" style="width: 100%;"></div>
+      </div>
+    </div>
 
     <!-- Canvas Engine -->
     <canvas id="gameCanvas"></canvas>
@@ -682,6 +738,7 @@
       const MOVE_SPEED = 3.2;   // Relative player adjust speed
       const MAX_LIVES = 3;
       const MAX_JUMPS = 4;      // Allow jumping up to 4 times before hitting ground (multi-jump)
+      const RAINBOW_DURATION = 60 * 15; // 15 seconds at 60 FPS
 
       // --- DOM REFERENCES ---
       const canvas = document.getElementById('gameCanvas');
@@ -697,6 +754,8 @@
       const finalScoreVal = document.getElementById('final-score-val');
       const playAgainBtn = document.getElementById('play-again-btn');
       const rainbowBanner = document.getElementById('rainbow-banner');
+      const rainbowTimerVal = document.getElementById('rainbow-timer-val');
+      const rainbowProgressFill = document.getElementById('rainbow-progress-fill');
 
       function updateSoundIcon() {
         if (sounds.muted) {
@@ -1395,6 +1454,16 @@
 
         if (player.rainbowTimer > 0) {
           player.rainbowTimer--;
+          const pct = Math.max(0, (player.rainbowTimer / RAINBOW_DURATION) * 100);
+          const remainingSec = (player.rainbowTimer / 60).toFixed(1);
+
+          if (rainbowProgressFill) {
+            rainbowProgressFill.style.width = `${pct}%`;
+          }
+          if (rainbowTimerVal) {
+            rainbowTimerVal.textContent = `${remainingSec}s`;
+          }
+
           if (player.rainbowTimer <= 0) {
             player.companion.active = false;
             rainbowBanner.classList.remove('active');
@@ -1563,11 +1632,13 @@
             c.collected = true;
 
             if (c.type === 'rainbow') {
-              player.rainbowTimer = 60 * 15;
+              player.rainbowTimer = RAINBOW_DURATION;
               player.companion.active = true;
               player.companion.x = player.x - 30;
               player.companion.y = player.y;
               rainbowBanner.classList.add('active');
+              if (rainbowProgressFill) rainbowProgressFill.style.width = '100%';
+              if (rainbowTimerVal) rainbowTimerVal.textContent = '15.0s';
               sounds.playRainbowPowerup();
               addScore(250, c.x, c.y);
             } else {
