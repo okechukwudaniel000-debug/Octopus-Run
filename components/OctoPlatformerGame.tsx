@@ -18,6 +18,12 @@ interface Particle {
   color: string;
   size: number;
   life: number;
+  maxLife?: number;
+  shape?: 'spark' | 'star' | 'square' | 'dust';
+  gravity?: number;
+  drag?: number;
+  rotation?: number;
+  vRot?: number;
 }
 
 interface Platform {
@@ -487,6 +493,53 @@ export default function OctoPlatformerGame({
     }
   }, []);
 
+  const spawnCollectSparks = useCallback((cx: number, cy: number, type: Collectible['type']) => {
+    const state = gameStateRef.current;
+    let palette = ['#fbbf24', '#f59e0b', '#facc15', '#ffffff', '#fef08a'];
+
+    if (type === 'orange') {
+      palette = ['#f97316', '#ea580c', '#fb923c', '#ffffff', '#fed7aa'];
+    } else if (type === 'purple') {
+      palette = ['#a855f7', '#9333ea', '#c084fc', '#ffffff', '#f0abfc'];
+    } else if (type === 'blue') {
+      palette = ['#3b82f6', '#2563eb', '#60a5fa', '#38bdf8', '#ffffff'];
+    } else if (type === 'green') {
+      palette = ['#22c55e', '#16a34a', '#4ade80', '#86efac', '#ffffff'];
+    } else if (type === 'quad') {
+      palette = ['#ef4444', '#3b82f6', '#eab308', '#10b981', '#ffffff'];
+    } else if (type === 'chick') {
+      palette = ['#facc15', '#fbbf24', '#f97316', '#ffffff', '#fef08a'];
+    } else if (type === 'rainbow') {
+      palette = ['#ec4899', '#8b5cf6', '#3b82f6', '#10b981', '#f59e0b', '#ffffff'];
+    }
+
+    const count = type === 'rainbow' ? 24 : type === 'chick' || type === 'quad' ? 18 : 12;
+
+    for (let i = 0; i < count; i++) {
+      const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.45;
+      const speed = 1.6 + Math.random() * 3.4;
+      const color = palette[Math.floor(Math.random() * palette.length)];
+      const maxLife = 18 + Math.floor(Math.random() * 12);
+      const isStar = Math.random() > 0.45;
+
+      state.particles.push({
+        x: cx + 8,
+        y: cy + 8,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed - 1.0,
+        color,
+        size: isStar ? 3.5 + Math.random() * 1.5 : 2.5 + Math.random() * 2,
+        life: maxLife,
+        maxLife,
+        shape: isStar ? 'star' : 'spark',
+        gravity: 0.08,
+        drag: 0.94,
+        rotation: Math.random() * Math.PI,
+        vRot: (Math.random() - 0.5) * 0.3,
+      });
+    }
+  }, []);
+
   const handleJump = useCallback(() => {
     const state = gameStateRef.current;
     if (state.isGameOver) return;
@@ -511,19 +564,41 @@ export default function OctoPlatformerGame({
         playSound('jump', 4);
       }
 
-      // Air puff particle colors indicating jump tier
-      const puffColors = ['#94a3b8', '#38bdf8', '#a855f7', '#ec4899'];
-      const puffColor = puffColors[Math.min(state.player.jumpCount - 1, puffColors.length - 1)];
+      // Colorful kinetic sparks spraying from feet on jump
+      let jumpPalette = ['#94a3b8', '#64748b', '#cbd5e1', '#ffffff', '#475569'];
+      if (state.player.jumpCount === 2) {
+        jumpPalette = ['#38bdf8', '#0284c7', '#67e8f9', '#ffffff', '#93c5fd'];
+      } else if (state.player.jumpCount === 3) {
+        jumpPalette = ['#c084fc', '#a855f7', '#e879f9', '#ffffff', '#f472b6'];
+      } else if (state.player.jumpCount >= 4) {
+        jumpPalette = ['#ec4899', '#f59e0b', '#fbbf24', '#ffffff', '#f43f5e'];
+      }
 
-      for (let i = 0; i < 6; i++) {
+      const sparkCount = state.player.jumpCount === 1 ? 10 : 14;
+      const feetX = state.player.x + state.player.width / 2;
+      const feetY = state.player.y + state.player.height;
+
+      for (let i = 0; i < sparkCount; i++) {
+        const angle = (Math.PI / 2) + (Math.random() - 0.5) * 1.6;
+        const speed = 1.5 + Math.random() * 3.0;
+        const color = jumpPalette[Math.floor(Math.random() * jumpPalette.length)];
+        const maxLife = 14 + Math.floor(Math.random() * 10);
+        const isStar = state.player.jumpCount > 1 && Math.random() > 0.5;
+
         state.particles.push({
-          x: state.player.x + state.player.width / 2 + (Math.random() - 0.5) * 16,
-          y: state.player.y + state.player.height,
-          vx: (Math.random() - 0.5) * 2.6,
-          vy: Math.random() * 2 + 1,
-          color: puffColor,
-          size: 3,
-          life: 16,
+          x: feetX + (Math.random() - 0.5) * 14,
+          y: feetY - 2,
+          vx: Math.cos(angle) * speed + (Math.random() - 0.5) * 2,
+          vy: Math.sin(angle) * speed,
+          color,
+          size: isStar ? 3 : 2 + Math.random() * 2,
+          life: maxLife,
+          maxLife,
+          shape: isStar ? 'star' : state.player.jumpCount > 1 ? 'spark' : 'dust',
+          gravity: 0.1,
+          drag: 0.93,
+          rotation: Math.random() * Math.PI,
+          vRot: (Math.random() - 0.5) * 0.25,
         });
       }
     }
@@ -821,6 +896,7 @@ export default function OctoPlatformerGame({
               if (rainbowBarRef.current) rainbowBarRef.current.style.width = '100%';
               if (rainbowTextRef.current) rainbowTextRef.current.textContent = '15.0s';
               playSound('rainbow');
+              spawnCollectSparks(c.x, c.baseY, 'rainbow');
               state.score += 250;
               setScore(state.score);
               state.floatingTexts.push({
@@ -839,6 +915,7 @@ export default function OctoPlatformerGame({
 
               if (state.player.rainbowTimer > 0) pts *= 2;
               playSound('collect', pts);
+              spawnCollectSparks(c.x, c.baseY, c.type);
               state.score += pts;
               setScore(state.score);
               state.floatingTexts.push({
@@ -864,6 +941,12 @@ export default function OctoPlatformerGame({
           const p = state.particles[i];
           p.x += p.vx;
           p.y += p.vy;
+          if (p.drag) p.vx *= p.drag;
+          else p.vx *= 0.95;
+          p.vy += (p.gravity ?? 0.1);
+          if (p.rotation !== undefined && p.vRot) {
+            p.rotation += p.vRot;
+          }
           p.life--;
           if (p.life <= 0) {
             state.particles.splice(i, 1);
@@ -1111,12 +1194,55 @@ export default function OctoPlatformerGame({
         ctx.restore();
       }
 
-      // Particles
+      // Particles (sparks, stars, puffs)
       for (const p of state.particles) {
         ctx.save();
+        const alpha = Math.max(0, Math.min(1, p.life / (p.maxLife || 20)));
+        ctx.globalAlpha = alpha;
         ctx.fillStyle = p.color;
-        ctx.globalAlpha = Math.max(0, p.life / 30);
-        ctx.fillRect(p.x, p.y, p.size, p.size);
+
+        if (p.shape === 'star') {
+          // 4-point twinkling star
+          ctx.translate(p.x, p.y);
+          if (p.rotation) ctx.rotate(p.rotation);
+          const r = p.size;
+          ctx.beginPath();
+          ctx.moveTo(0, -r * 1.6);
+          ctx.lineTo(r * 0.4, -r * 0.4);
+          ctx.lineTo(r * 1.6, 0);
+          ctx.lineTo(r * 0.4, r * 0.4);
+          ctx.lineTo(0, r * 1.6);
+          ctx.lineTo(-r * 0.4, r * 0.4);
+          ctx.lineTo(-r * 1.6, 0);
+          ctx.lineTo(-r * 0.4, -r * 0.4);
+          ctx.closePath();
+          ctx.fill();
+
+          // Hot white center glint
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(-r * 0.35, -r * 0.35, r * 0.7, r * 0.7);
+        } else if (p.shape === 'spark') {
+          // Diamond spark
+          ctx.translate(p.x, p.y);
+          if (p.rotation) ctx.rotate(p.rotation);
+          const s = p.size;
+          ctx.beginPath();
+          ctx.moveTo(0, -s * 1.2);
+          ctx.lineTo(s * 0.8, 0);
+          ctx.lineTo(0, s * 1.2);
+          ctx.lineTo(-s * 0.8, 0);
+          ctx.closePath();
+          ctx.fill();
+
+          if (s >= 2.5) {
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(-0.8, -0.8, 1.6, 1.6);
+          }
+        } else {
+          // Crisp pixel square / dust
+          ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+        }
+
         ctx.restore();
       }
 
@@ -1235,7 +1361,7 @@ export default function OctoPlatformerGame({
       cancelAnimationFrame(animId);
       window.removeEventListener('resize', resize);
     };
-  }, [generateChunk, playSound, resetGame]);
+  }, [generateChunk, playSound, resetGame, spawnCollectSparks]);
 
   return (
     <div
