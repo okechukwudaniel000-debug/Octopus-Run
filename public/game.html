@@ -467,7 +467,7 @@
           <span>run & dodge</span>
           <span style="color:#d0d7de">|</span>
           <span class="key-badge">Space / Click</span>
-          <span>multi-jump (x3)</span>
+          <span>double-jump (2x)</span>
         </div>
 
         <div class="hud-score-panel">
@@ -737,7 +737,7 @@
       const SCROLL_SPEED = 2.6; // Continuous forward auto-scroll speed
       const MOVE_SPEED = 3.2;   // Relative player adjust speed
       const MAX_LIVES = 3;
-      const MAX_JUMPS = 4;      // Allow jumping up to 4 times before hitting ground (multi-jump)
+      const MAX_JUMPS = 2;      // Allow jumping up to 2 times before hitting ground (double-jump / 2x)
       const RAINBOW_DURATION = 60 * 15; // 15 seconds at 60 FPS
 
       // --- DOM REFERENCES ---
@@ -1136,26 +1136,15 @@
           if (player.jumpCount === 1) {
             player.vy = JUMP_FORCE; // -11.4: initial strong ground jump
             sounds.playJump(1);
-          } else if (player.jumpCount === 2) {
-            player.vy = -10.8; // 2nd jump: elevates further up
-            sounds.playJump(2);
-          } else if (player.jumpCount === 3) {
-            player.vy = -10.2; // 3rd jump: lifts higher into the air
-            sounds.playJump(3);
           } else {
-            player.vy = -9.6;  // 4th jump: final extra boost
-            sounds.playJump(4);
+            player.vy = -10.8; // 2nd jump: elevates further up (2x jump)
+            sounds.playJump(2);
           }
 
           // Colorful kinetic sparks spraying from feet on jump
-          let jumpPalette = ['#94a3b8', '#64748b', '#cbd5e1', '#ffffff', '#475569'];
-          if (player.jumpCount === 2) {
-            jumpPalette = ['#38bdf8', '#0284c7', '#67e8f9', '#ffffff', '#93c5fd'];
-          } else if (player.jumpCount === 3) {
-            jumpPalette = ['#c084fc', '#a855f7', '#e879f9', '#ffffff', '#f472b6'];
-          } else if (player.jumpCount >= 4) {
-            jumpPalette = ['#ec4899', '#f59e0b', '#fbbf24', '#ffffff', '#f43f5e'];
-          }
+          const jumpPalette = player.jumpCount === 2
+            ? ['#38bdf8', '#0284c7', '#67e8f9', '#ffffff', '#93c5fd']
+            : ['#94a3b8', '#64748b', '#cbd5e1', '#ffffff', '#475569'];
 
           const sparkCount = player.jumpCount === 1 ? 10 : 14;
           const feetX = player.x + player.width / 2;

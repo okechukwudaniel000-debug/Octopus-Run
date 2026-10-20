@@ -62,7 +62,7 @@ const GRAVITY = 0.58;
 const JUMP_FORCE = -11.4;
 const SCROLL_SPEED = 2.6; // Continuous forward camera speed
 const MOVE_SPEED = 3.2;   // Relative player adjust speed
-const MAX_JUMPS = 4;      // Allow jumping up to 4 times before hitting ground (multi-jump)
+const MAX_JUMPS = 2;      // Allow jumping up to 2 times before hitting ground (double-jump / 2x)
 const RAINBOW_DURATION = 60 * 15; // 15 seconds at 60 FPS
 
 export default function OctoPlatformerGame({
@@ -553,26 +553,15 @@ export default function OctoPlatformerGame({
       if (state.player.jumpCount === 1) {
         state.player.vy = JUMP_FORCE; // -11.4: initial strong ground jump
         playSound('jump', 1);
-      } else if (state.player.jumpCount === 2) {
-        state.player.vy = -10.8; // 2nd jump: elevates further up
-        playSound('jump', 2);
-      } else if (state.player.jumpCount === 3) {
-        state.player.vy = -10.2; // 3rd jump: lifts higher into the air
-        playSound('jump', 3);
       } else {
-        state.player.vy = -9.6;  // 4th jump: final extra boost
-        playSound('jump', 4);
+        state.player.vy = -10.8; // 2nd jump: elevates further up (2x jump)
+        playSound('jump', 2);
       }
 
       // Colorful kinetic sparks spraying from feet on jump
-      let jumpPalette = ['#94a3b8', '#64748b', '#cbd5e1', '#ffffff', '#475569'];
-      if (state.player.jumpCount === 2) {
-        jumpPalette = ['#38bdf8', '#0284c7', '#67e8f9', '#ffffff', '#93c5fd'];
-      } else if (state.player.jumpCount === 3) {
-        jumpPalette = ['#c084fc', '#a855f7', '#e879f9', '#ffffff', '#f472b6'];
-      } else if (state.player.jumpCount >= 4) {
-        jumpPalette = ['#ec4899', '#f59e0b', '#fbbf24', '#ffffff', '#f43f5e'];
-      }
+      const jumpPalette = state.player.jumpCount === 2
+        ? ['#38bdf8', '#0284c7', '#67e8f9', '#ffffff', '#93c5fd']
+        : ['#94a3b8', '#64748b', '#cbd5e1', '#ffffff', '#475569'];
 
       const sparkCount = state.player.jumpCount === 1 ? 10 : 14;
       const feetX = state.player.x + state.player.width / 2;
@@ -1447,7 +1436,7 @@ export default function OctoPlatformerGame({
             <span className="inline-flex items-center justify-center bg-white border border-slate-300 border-b-2 border-b-slate-400 rounded px-2 py-0.5 font-bold text-[11px] text-slate-800">
               Space / Click
             </span>
-            <span className="text-slate-600">multi-jump (x3)</span>
+            <span className="text-slate-600">double-jump (2x)</span>
           </div>
 
           {/* Score Counter & Controls Bar */}
@@ -1476,17 +1465,6 @@ export default function OctoPlatformerGame({
               <Code2 className="w-3.5 h-3.5" />
               <span>HTML</span>
             </button>
-
-            {/* Download game.html */}
-            <a
-              href="/game.html"
-              download="octo-platformer.html"
-              title="Download standalone game.html"
-              className="hidden md:inline-flex items-center gap-1.5 bg-white border border-slate-300 hover:border-slate-400 active:bg-slate-100 rounded-md px-2.5 py-1 text-xs font-mono text-slate-800 shadow-xs transition-colors"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span>Download</span>
-            </a>
 
             {/* Fullscreen Toggle */}
             <button
