@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Volume2, VolumeX, Maximize2, Minimize2, Download, Code2, RefreshCw } from 'lucide-react';
+import { Volume2, VolumeX, Maximize2, Minimize2, Code2, RefreshCw } from 'lucide-react';
 
 interface FloatingText {
   text: string;
@@ -1612,14 +1612,6 @@ export default function OctoPlatformerGame({
               <RefreshCw className="w-4 h-4" />
               <span>Play again</span>
             </button>
-            <a
-              href="/game.html"
-              download="octo-platformer.html"
-              className="font-mono text-sm sm:text-base font-medium text-slate-700 bg-slate-100 border border-slate-300 hover:bg-slate-200 rounded-lg px-4 py-2.5 transition-all flex items-center gap-2"
-            >
-              <Download className="w-4 h-4" />
-              <span>Save game.html</span>
-            </a>
           </div>
         </div>
       )}
