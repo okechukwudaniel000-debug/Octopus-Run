@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Volume2, VolumeX, Maximize2, Minimize2, Code2, RefreshCw } from 'lucide-react';
+import { Volume2, VolumeX, Maximize2, Minimize2, RefreshCw } from 'lucide-react';
 
 interface FloatingText {
   text: string;
@@ -68,7 +68,7 @@ const RAINBOW_DURATION = 60 * 15; // 15 seconds at 60 FPS
 export default function OctoPlatformerGame({
   onOpenCodeViewer,
 }: {
-  onOpenCodeViewer: () => void;
+  onOpenCodeViewer?: () => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -1498,17 +1498,6 @@ export default function OctoPlatformerGame({
               className="bg-white border border-slate-300 hover:border-slate-400 active:bg-slate-100 rounded-md p-1.5 text-slate-800 shadow-xs transition-colors shrink-0"
             >
               {isMuted ? <VolumeX className="w-4 h-4 text-slate-400" /> : <Volume2 className="w-4 h-4" />}
-            </button>
-
-            {/* View Single HTML Code */}
-            <button
-              onClick={onOpenCodeViewer}
-              title="View Single-File HTML Code"
-              aria-label="View Code"
-              className="hidden md:inline-flex items-center gap-1.5 bg-white border border-slate-300 hover:border-slate-400 active:bg-slate-100 rounded-md px-2.5 py-1 text-xs font-mono text-slate-800 shadow-xs transition-colors shrink-0"
-            >
-              <Code2 className="w-3.5 h-3.5" />
-              <span>HTML</span>
             </button>
 
             {/* Fullscreen Toggle */}
