@@ -576,10 +576,6 @@
 
     <!-- On-Screen Mobile & Tablet Touch Controller Dock -->
     <div class="mobile-controls">
-      <div class="mobile-btn-group">
-        <button id="m-btn-left" class="mobile-btn" aria-label="Move Left">◀</button>
-        <button id="m-btn-right" class="mobile-btn" aria-label="Move Right">▶</button>
-      </div>
       <button id="m-btn-exit" class="mobile-btn-exit">Exit</button>
       <div class="mobile-btn-group">
         <button id="m-btn-jump" class="mobile-btn-jump" aria-label="Jump (2x)">
@@ -901,11 +897,11 @@
       });
 
       // Touch controls
-      const mBtnLeft = document.getElementById('m-btn-left');
-      const mBtnRight = document.getElementById('m-btn-right');
+      // Touch jump control
       const mBtnJump = document.getElementById('m-btn-jump');
 
       const setupTouchBtn = (elem, pressAction, releaseAction) => {
+        if (!elem) return;
         const onStart = (e) => {
           e.preventDefault();
           sounds.init();
@@ -923,8 +919,6 @@
         elem.addEventListener('mouseleave', onEnd);
       };
 
-      setupTouchBtn(mBtnLeft, () => { keys.left = true; }, () => { keys.left = false; });
-      setupTouchBtn(mBtnRight, () => { keys.right = true; }, () => { keys.right = false; });
       setupTouchBtn(mBtnJump, () => {
         if (!keys.jump) handleJumpAction();
         keys.jump = true;

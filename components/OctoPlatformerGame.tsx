@@ -1547,63 +1547,7 @@ export default function OctoPlatformerGame({
 
       {/* On-Screen Mobile & Tablet Touch Controller Dock */}
       {showTouchControls && (
-        <div className="absolute bottom-2 sm:bottom-4 left-0 w-full px-3 sm:px-8 flex justify-between items-center pointer-events-none z-20">
-          {/* Direction Buttons (Left Thumb Zone) */}
-          <div className="flex gap-2.5 sm:gap-4 pointer-events-auto">
-            <button
-              type="button"
-              aria-label="Move Left"
-              onPointerDown={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                initAudio();
-                triggerStart();
-                gameStateRef.current.keys.left = true;
-              }}
-              onPointerUp={(e) => {
-                e.preventDefault();
-                gameStateRef.current.keys.left = false;
-              }}
-              onPointerLeave={(e) => {
-                e.preventDefault();
-                gameStateRef.current.keys.left = false;
-              }}
-              onPointerCancel={(e) => {
-                e.preventDefault();
-                gameStateRef.current.keys.left = false;
-              }}
-              className="w-13 h-13 sm:w-16 sm:h-16 rounded-2xl bg-slate-900/85 active:bg-slate-950 active:scale-95 text-white border border-white/20 shadow-lg backdrop-blur-md flex items-center justify-center text-xl sm:text-2xl font-bold select-none touch-none transition-transform"
-            >
-              ◀
-            </button>
-            <button
-              type="button"
-              aria-label="Move Right"
-              onPointerDown={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                initAudio();
-                triggerStart();
-                gameStateRef.current.keys.right = true;
-              }}
-              onPointerUp={(e) => {
-                e.preventDefault();
-                gameStateRef.current.keys.right = false;
-              }}
-              onPointerLeave={(e) => {
-                e.preventDefault();
-                gameStateRef.current.keys.right = false;
-              }}
-              onPointerCancel={(e) => {
-                e.preventDefault();
-                gameStateRef.current.keys.right = false;
-              }}
-              className="w-13 h-13 sm:w-16 sm:h-16 rounded-2xl bg-slate-900/85 active:bg-slate-950 active:scale-95 text-white border border-white/20 shadow-lg backdrop-blur-md flex items-center justify-center text-xl sm:text-2xl font-bold select-none touch-none transition-transform"
-            >
-              ▶
-            </button>
-          </div>
-
+        <div className="absolute bottom-2 sm:bottom-4 left-0 w-full px-4 sm:px-8 flex justify-between items-center pointer-events-none z-20">
           {/* Quick Exit / Restart on Touch Dock */}
           <div className="pointer-events-auto flex items-center gap-2">
             <button
@@ -1621,7 +1565,7 @@ export default function OctoPlatformerGame({
                   resetGame();
                 }
               }}
-              className="font-mono text-[11px] sm:text-xs font-medium text-slate-300 hover:text-white bg-slate-900/70 active:bg-slate-950 border border-white/10 rounded-lg px-2.5 py-1.5 backdrop-blur-md transition-all select-none shadow-sm"
+              className="font-mono text-xs sm:text-sm font-medium text-slate-300 hover:text-white bg-slate-900/75 active:bg-slate-950 border border-white/10 rounded-xl px-3.5 py-2 backdrop-blur-md transition-all select-none shadow-md"
             >
               {isGameOver ? 'Play again' : 'Exit'}
             </button>
