@@ -315,51 +315,125 @@
       transform: translateY(-1px);
     }
 
-    /* On-Screen Mobile Controls */
+    /* On-Screen Mobile & Tablet Touch Controls */
     .mobile-controls {
       display: none;
       position: absolute;
-      bottom: 60px;
+      bottom: 12px;
       left: 0;
       width: 100%;
-      padding: 0 24px;
+      padding: 0 16px;
+      box-sizing: border-box;
       justify-content: space-between;
+      align-items: center;
       pointer-events: none;
       z-index: 25;
     }
 
-    @media (max-width: 768px), (pointer: coarse) {
+    .hud-mobile-hi {
+      display: none;
+      font-family: ui-monospace, SFMono-Regular, monospace;
+      font-size: 11px;
+      font-weight: 700;
+      color: #374151;
+      background: rgba(255, 255, 255, 0.85);
+      border: 1px solid #d0d7de;
+      padding: 4px 8px;
+      border-radius: 6px;
+      white-space: nowrap;
+    }
+
+    @media (max-width: 1024px), (pointer: coarse) {
       .mobile-controls {
         display: flex;
       }
       .hud-controls-banner {
-        display: none;
+        display: none !important;
+      }
+      .hud-bottom {
+        display: none !important;
+      }
+      .hud-mobile-hi {
+        display: block;
+      }
+      .score-display {
+        font-size: 13px;
+        white-space: nowrap;
+      }
+      .hud-top {
+        gap: 8px;
       }
     }
 
     .mobile-btn-group {
       display: flex;
-      gap: 12px;
+      gap: 10px;
       pointer-events: auto;
     }
 
     .mobile-btn {
-      width: 56px;
-      height: 56px;
-      border-radius: 12px;
-      background: rgba(255, 255, 255, 0.85);
-      border: 2px solid #d0d7de;
+      width: 52px;
+      height: 52px;
+      border-radius: 16px;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.2);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 22px;
-      color: #24292f;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.06);
+      font-size: 20px;
+      color: #ffffff;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      touch-action: none;
+      user-select: none;
+      transition: transform 0.1s ease;
     }
 
     .mobile-btn:active {
-      background: #e5e7eb;
+      background: #0f172a;
       transform: scale(0.95);
+    }
+
+    .mobile-btn-jump {
+      width: 58px;
+      height: 58px;
+      border-radius: 18px;
+      background: linear-gradient(135deg, rgba(79, 70, 229, 0.9), rgba(147, 51, 234, 0.9));
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #ffffff;
+      box-shadow: 0 6px 16px rgba(79, 70, 229, 0.35);
+      touch-action: none;
+      user-select: none;
+      transition: transform 0.1s ease;
+    }
+
+    .mobile-btn-jump:active {
+      transform: scale(0.95);
+    }
+
+    .mobile-jump-label {
+      font-size: 9px;
+      font-family: ui-monospace, SFMono-Regular, monospace;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      color: #e0e7ff;
+      text-transform: uppercase;
+      margin-top: 1px;
+    }
+
+    .mobile-btn-exit {
+      font-family: ui-monospace, SFMono-Regular, monospace;
+      font-size: 11px;
+      color: #cbd5e1;
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 8px;
+      padding: 6px 12px;
+      pointer-events: auto;
+      cursor: pointer;
     }
 
     .rainbow-banner {
@@ -471,6 +545,7 @@
         </div>
 
         <div class="hud-score-panel">
+          <div class="hud-mobile-hi">HI: <span id="hud-mobile-hi-val">0</span></div>
           <div class="score-display">Your score: <span id="hud-score">0</span></div>
           <button id="sound-btn" class="sound-toggle-btn" title="Toggle Sound" aria-label="Toggle Sound">
             <svg id="sound-icon-on" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -487,7 +562,7 @@
         </div>
       </div>
 
-      <!-- Bottom Bar -->
+      <!-- Bottom Bar (Desktop) -->
       <div class="hud-bottom">
         <div class="hud-meta-info">
           <span>super-mono / your high score:</span>
@@ -499,14 +574,18 @@
       </div>
     </div>
 
-    <!-- Mobile Touch Controls -->
+    <!-- On-Screen Mobile & Tablet Touch Controller Dock -->
     <div class="mobile-controls">
       <div class="mobile-btn-group">
-        <button id="m-btn-left" class="mobile-btn">◀</button>
-        <button id="m-btn-right" class="mobile-btn">▶</button>
+        <button id="m-btn-left" class="mobile-btn" aria-label="Move Left">◀</button>
+        <button id="m-btn-right" class="mobile-btn" aria-label="Move Right">▶</button>
       </div>
+      <button id="m-btn-exit" class="mobile-btn-exit">Exit</button>
       <div class="mobile-btn-group">
-        <button id="m-btn-jump" class="mobile-btn">▲</button>
+        <button id="m-btn-jump" class="mobile-btn-jump" aria-label="Jump (2x)">
+          <span style="line-height:1;">▲</span>
+          <span class="mobile-jump-label">Jump 2x</span>
+        </button>
       </div>
     </div>
 
@@ -851,6 +930,23 @@
         keys.jump = true;
       }, () => { keys.jump = false; });
 
+      const mBtnExit = document.getElementById('m-btn-exit');
+      if (mBtnExit) {
+        mBtnExit.addEventListener('click', () => {
+          sounds.init();
+          if (!isGameOver) {
+            lives = 0;
+            isGameOver = true;
+            renderHearts();
+            finalScoreVal.textContent = score;
+            gameOverModal.classList.add('visible');
+            sounds.playGameOver();
+          } else {
+            initGame();
+          }
+        });
+      }
+
       // --- GAME STATE ---
       let score = 0;
       let highScore = parseInt(localStorage.getItem('octo_game_high_score') || '0', 10);
@@ -863,6 +959,8 @@
       let groundY = 432;
 
       hudHighScore.textContent = highScore;
+      const hudMobileHiVal = document.getElementById('hud-mobile-hi-val');
+      if (hudMobileHiVal) hudMobileHiVal.textContent = highScore;
 
       function renderHearts() {
         heartsContainer.innerHTML = '';
@@ -1049,9 +1147,13 @@
 
       function resetPlayer() {
         const h = canvas ? canvas.height : 500;
-        groundY = Math.max(360, Math.floor((h - 58) / TILE_SIZE) * TILE_SIZE);
+        const w = canvas ? canvas.width : 800;
+        const hasTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || window.matchMedia('(pointer: coarse)').matches;
+        const isSmall = hasTouch || w <= 1024;
+        const bottomReserve = isSmall ? 124 : 58;
+        groundY = Math.max(240, Math.floor((h - bottomReserve) / TILE_SIZE) * TILE_SIZE);
 
-        player.x = 160;
+        player.x = Math.min(140, Math.max(72, Math.floor(w * 0.18)));
         player.y = groundY - player.height;
         player.vx = 0;
         player.vy = 0;
@@ -1202,6 +1304,7 @@
           highScore = score;
           localStorage.setItem('octo_game_high_score', highScore);
           hudHighScore.textContent = highScore;
+          if (hudMobileHiVal) hudMobileHiVal.textContent = highScore;
         }
 
         setTimeout(() => {
@@ -1937,7 +2040,10 @@
         const container = document.getElementById('game-container');
         canvas.width = container.clientWidth;
         canvas.height = container.clientHeight;
-        groundY = Math.max(360, Math.floor((canvas.height - 58) / TILE_SIZE) * TILE_SIZE);
+        const hasTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || window.matchMedia('(pointer: coarse)').matches;
+        const isSmall = hasTouch || canvas.width <= 1024;
+        const bottomReserve = isSmall ? 124 : 58;
+        groundY = Math.max(240, Math.floor((canvas.height - bottomReserve) / TILE_SIZE) * TILE_SIZE);
       }
 
       window.addEventListener('resize', resizeCanvas);

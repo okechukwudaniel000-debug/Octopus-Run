@@ -95,6 +95,23 @@ export default function OctoPlatformerGame({
   });
   const [isRainbowActive, setIsRainbowActive] = useState<boolean>(false);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+  const [showTouchControls, setShowTouchControls] = useState<boolean>(false);
+
+  // Responsive touch & screen size detection for mobile & tablet
+  useEffect(() => {
+    const updateTouch = () => {
+      const hasTouch = typeof window !== 'undefined' && (
+        'ontouchstart' in window ||
+        navigator.maxTouchPoints > 0 ||
+        window.matchMedia('(pointer: coarse)').matches
+      );
+      const isMobileOrTablet = typeof window !== 'undefined' && window.innerWidth <= 1024;
+      setShowTouchControls(hasTouch || isMobileOrTablet);
+    };
+    updateTouch();
+    window.addEventListener('resize', updateTouch);
+    return () => window.removeEventListener('resize', updateTouch);
+  }, []);
 
   // Sound Engine using Web Audio API
   const initAudio = useCallback(() => {
@@ -457,8 +474,17 @@ export default function OctoPlatformerGame({
 
   const resetGame = useCallback(() => {
     const cvs = canvasRef.current;
-    const h = cvs ? cvs.height : 500;
-    const groundY = Math.max(360, Math.floor((h - 58) / TILE_SIZE) * TILE_SIZE);
+    const w = cvs ? cvs.width : (containerRef.current ? containerRef.current.clientWidth : 800);
+    const h = cvs ? cvs.height : (containerRef.current ? containerRef.current.clientHeight : 500);
+    const hasTouch = typeof window !== 'undefined' && (
+      'ontouchstart' in window ||
+      navigator.maxTouchPoints > 0 ||
+      window.matchMedia('(pointer: coarse)').matches
+    );
+    const isTouchOrSmall = hasTouch || w <= 1024;
+    // On touch/mobile/tablet reserve bottom space for controls on the ground foundation
+    const bottomReserve = isTouchOrSmall ? 124 : 58;
+    const groundY = Math.max(240, Math.floor((h - bottomReserve) / TILE_SIZE) * TILE_SIZE);
 
     const state = gameStateRef.current;
     state.groundY = groundY;
@@ -468,7 +494,8 @@ export default function OctoPlatformerGame({
     state.gameStarted = false;
     state.screenShake = 0;
     state.camera = { x: 0, y: 0 };
-    state.player.x = 160;
+    // Responsive spawn position ensuring plenty of reaction time ahead
+    state.player.x = Math.min(140, Math.max(72, Math.floor(w * 0.18)));
     state.player.y = groundY - 38;
     state.player.vx = 0;
     state.player.vy = 0;
@@ -641,9 +668,18 @@ export default function OctoPlatformerGame({
 
     const resize = () => {
       if (!cvs || !containerRef.current) return;
-      cvs.width = containerRef.current.clientWidth;
-      cvs.height = containerRef.current.clientHeight;
-      const groundY = Math.max(360, Math.floor((cvs.height - 58) / TILE_SIZE) * TILE_SIZE);
+      const width = containerRef.current.clientWidth;
+      const height = containerRef.current.clientHeight;
+      cvs.width = width;
+      cvs.height = height;
+      const hasTouch = typeof window !== 'undefined' && (
+        'ontouchstart' in window ||
+        navigator.maxTouchPoints > 0 ||
+        window.matchMedia('(pointer: coarse)').matches
+      );
+      const isTouchOrSmall = hasTouch || width <= 1024;
+      const bottomReserve = isTouchOrSmall ? 124 : 58;
+      const groundY = Math.max(240, Math.floor((height - bottomReserve) / TILE_SIZE) * TILE_SIZE);
       gameStateRef.current.groundY = groundY;
     };
     resize();
@@ -1362,10 +1398,11 @@ export default function OctoPlatformerGame({
 
       {/* Rainbow Active Banner with Progress Bar & Countdown Timer */}
       {isRainbowActive && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5 z-30 pointer-events-none select-none animate-in fade-in zoom-in-95 duration-200">
-          <div className="bg-gradient-to-r from-pink-500 via-purple-500 to-amber-500 text-white font-mono text-xs font-bold px-4 py-1.5 rounded-full shadow-lg tracking-wide flex items-center gap-2 border border-white/30 backdrop-blur-xs">
+        <div className="absolute top-3 sm:top-4 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 sm:gap-1.5 z-30 pointer-events-none select-none max-w-[92vw] animate-in fade-in zoom-in-95 duration-200">
+          <div className="bg-gradient-to-r from-pink-500 via-purple-500 to-amber-500 text-white font-mono text-[11px] sm:text-xs font-bold px-3 sm:px-4 py-1 sm:py-1.5 rounded-full shadow-lg tracking-wide flex items-center gap-1.5 sm:gap-2 border border-white/30 backdrop-blur-xs whitespace-nowrap">
             <span className="text-sm leading-none animate-pulse">✨</span>
-            <span>RAINBOW COMPANION ACTIVE (2X & SHIELD)</span>
+            <span className="hidden sm:inline">RAINBOW COMPANION ACTIVE (2X & SHIELD)</span>
+            <span className="sm:hidden">RAINBOW 2X & SHIELD</span>
             <span className="text-white/60">|</span>
             <span ref={rainbowTextRef} className="font-mono font-extrabold text-amber-200 tabular-nums">
               15.0s
@@ -1373,7 +1410,7 @@ export default function OctoPlatformerGame({
           </div>
 
           {/* Smooth Rainbow Progress Bar Track */}
-          <div className="w-56 sm:w-72 h-2.5 bg-slate-900/50 backdrop-blur-xs rounded-full overflow-hidden p-0.5 border border-white/40 shadow-sm">
+          <div className="w-48 sm:w-72 h-2 sm:h-2.5 bg-slate-900/50 backdrop-blur-xs rounded-full overflow-hidden p-0.5 border border-white/40 shadow-sm">
             <div
               ref={rainbowBarRef}
               className="h-full rounded-full bg-gradient-to-r from-amber-400 via-pink-400 to-cyan-400 transition-[width] duration-75 ease-linear shadow-xs"
@@ -1387,8 +1424,8 @@ export default function OctoPlatformerGame({
       <canvas
         ref={canvasRef}
         className="block w-full h-full cursor-pointer select-none"
-        onPointerDown={(e) => {
-          // Allow clicking anywhere on canvas to trigger jump
+        onPointerDown={() => {
+          // Allow tapping anywhere on canvas to trigger jump
           initAudio();
           triggerStart();
           handleJump();
@@ -1396,11 +1433,11 @@ export default function OctoPlatformerGame({
       />
 
       {/* HUD Layer */}
-      <div className="absolute inset-0 pointer-events-none z-10 flex flex-col justify-between p-4 sm:p-6">
+      <div className="absolute inset-0 pointer-events-none z-10 flex flex-col justify-between p-3 sm:p-5 md:p-6">
         {/* Top HUD */}
-        <div className="flex justify-between items-center w-full">
+        <div className="flex justify-between items-center w-full gap-2">
           {/* 3 Green Pixel Hearts */}
-          <div className="flex items-center gap-1.5 pointer-events-auto">
+          <div className="flex items-center gap-1 sm:gap-1.5 pointer-events-auto shrink-0">
             {[0, 1, 2].map((i) => {
               const active = i < lives;
               return (
@@ -1423,8 +1460,8 @@ export default function OctoPlatformerGame({
             })}
           </div>
 
-          {/* Controls instructions keycaps banner */}
-          <div className="hidden sm:flex items-center gap-2 font-mono text-xs text-slate-600 bg-white/80 backdrop-blur-xs px-3 py-1.5 rounded-md border border-slate-300 shadow-xs">
+          {/* Controls instructions keycaps banner (Desktop only to prevent wrapping on tablet/mobile) */}
+          <div className="hidden lg:flex items-center gap-2 font-mono text-xs text-slate-600 bg-white/80 backdrop-blur-xs px-3 py-1.5 rounded-md border border-slate-300 shadow-xs whitespace-nowrap shrink-0">
             <span className="inline-flex items-center justify-center bg-white border border-slate-300 border-b-2 border-b-slate-400 rounded px-1.5 py-0.5 font-bold text-[11px] text-slate-800 min-w-5">
               ←
             </span>
@@ -1440,9 +1477,17 @@ export default function OctoPlatformerGame({
           </div>
 
           {/* Score Counter & Controls Bar */}
-          <div className="flex items-center gap-2 sm:gap-3 pointer-events-auto">
-            <div className="font-mono text-sm sm:text-base font-semibold text-slate-900 bg-white/70 backdrop-blur-xs px-3 py-1 rounded border border-slate-300 shadow-xs">
-              Your score: <span className="font-bold">{score}</span>
+          <div className="flex items-center gap-1.5 sm:gap-2.5 md:gap-3 pointer-events-auto shrink-0">
+            {/* Compact High Score indicator on mobile/tablet */}
+            <div className="lg:hidden font-mono text-xs font-semibold text-slate-700 bg-white/80 backdrop-blur-xs px-2.5 py-1 rounded border border-slate-300 shadow-xs whitespace-nowrap shrink-0">
+              HI: <span className="font-bold text-slate-900">{highScore}</span>
+            </div>
+
+            {/* Current Score - guaranteed single line */}
+            <div className="font-mono text-xs sm:text-sm md:text-base font-semibold text-slate-900 bg-white/80 backdrop-blur-xs px-2.5 sm:px-3 py-1 rounded border border-slate-300 shadow-xs whitespace-nowrap shrink-0">
+              <span className="hidden sm:inline">Your score: </span>
+              <span className="sm:hidden font-medium text-slate-600">Score: </span>
+              <span className="font-bold">{score}</span>
             </div>
 
             {/* Mute Button */}
@@ -1450,7 +1495,7 @@ export default function OctoPlatformerGame({
               onClick={toggleSound}
               title={isMuted ? 'Unmute Sound' : 'Mute Sound'}
               aria-label="Toggle Sound"
-              className="bg-white border border-slate-300 hover:border-slate-400 active:bg-slate-100 rounded-md p-1.5 text-slate-800 shadow-xs transition-colors"
+              className="bg-white border border-slate-300 hover:border-slate-400 active:bg-slate-100 rounded-md p-1.5 text-slate-800 shadow-xs transition-colors shrink-0"
             >
               {isMuted ? <VolumeX className="w-4 h-4 text-slate-400" /> : <Volume2 className="w-4 h-4" />}
             </button>
@@ -1460,7 +1505,7 @@ export default function OctoPlatformerGame({
               onClick={onOpenCodeViewer}
               title="View Single-File HTML Code"
               aria-label="View Code"
-              className="hidden md:inline-flex items-center gap-1.5 bg-white border border-slate-300 hover:border-slate-400 active:bg-slate-100 rounded-md px-2.5 py-1 text-xs font-mono text-slate-800 shadow-xs transition-colors"
+              className="hidden md:inline-flex items-center gap-1.5 bg-white border border-slate-300 hover:border-slate-400 active:bg-slate-100 rounded-md px-2.5 py-1 text-xs font-mono text-slate-800 shadow-xs transition-colors shrink-0"
             >
               <Code2 className="w-3.5 h-3.5" />
               <span>HTML</span>
@@ -1470,96 +1515,160 @@ export default function OctoPlatformerGame({
             <button
               onClick={toggleFullscreen}
               title="Toggle Fullscreen"
-              className="hidden sm:inline-flex bg-white border border-slate-300 hover:border-slate-400 active:bg-slate-100 rounded-md p-1.5 text-slate-800 shadow-xs transition-colors"
+              aria-label="Toggle Fullscreen"
+              className="hidden sm:inline-flex bg-white border border-slate-300 hover:border-slate-400 active:bg-slate-100 rounded-md p-1.5 text-slate-800 shadow-xs transition-colors shrink-0"
             >
               {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
             </button>
           </div>
         </div>
 
-        {/* Bottom HUD */}
-        <div className="flex justify-between items-end w-full">
-          {/* Metadata & High score */}
-          <div className="font-mono text-xs sm:text-sm text-slate-600 bg-white/85 backdrop-blur-xs px-3 py-1.5 rounded-md border border-slate-300 shadow-xs flex items-center gap-2">
-            <span>super-mono / your high score:</span>
-            <strong className="text-slate-900 font-bold">{highScore}</strong>
-            <span className="inline-block w-2 h-3 bg-emerald-500 animate-[pulse_1s_infinite]" />
+        {/* Bottom HUD (Shown on desktop when touch controls are not needed) */}
+        {!showTouchControls && (
+          <div className="flex justify-between items-end w-full">
+            {/* Metadata & High score */}
+            <div className="font-mono text-xs sm:text-sm text-slate-600 bg-white/85 backdrop-blur-xs px-3 py-1.5 rounded-md border border-slate-300 shadow-xs flex items-center gap-2">
+              <span>super-mono / your high score:</span>
+              <strong className="text-slate-900 font-bold">{highScore}</strong>
+              <span className="inline-block w-2 h-3 bg-emerald-500 animate-[pulse_1s_infinite]" />
+            </div>
+
+            {/* Exit / Restart Button */}
+            <button
+              onClick={() => {
+                initAudio();
+                if (!isGameOver) {
+                  gameStateRef.current.lives = 0;
+                  setLives(0);
+                  gameStateRef.current.isGameOver = true;
+                  setFinalScore(gameStateRef.current.score);
+                  setIsGameOver(true);
+                  playSound('gameover');
+                } else {
+                  resetGame();
+                }
+              }}
+              className="pointer-events-auto font-mono text-xs sm:text-sm font-medium text-slate-900 bg-white border border-slate-300 hover:border-slate-400 hover:bg-slate-50 active:translate-y-0.5 rounded-md px-4 py-1.5 shadow-xs transition-all"
+            >
+              {isGameOver ? 'Play again' : 'Exit game'}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* On-Screen Mobile & Tablet Touch Controller Dock */}
+      {showTouchControls && (
+        <div className="absolute bottom-2 sm:bottom-4 left-0 w-full px-3 sm:px-8 flex justify-between items-center pointer-events-none z-20">
+          {/* Direction Buttons (Left Thumb Zone) */}
+          <div className="flex gap-2.5 sm:gap-4 pointer-events-auto">
+            <button
+              type="button"
+              aria-label="Move Left"
+              onPointerDown={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                initAudio();
+                triggerStart();
+                gameStateRef.current.keys.left = true;
+              }}
+              onPointerUp={(e) => {
+                e.preventDefault();
+                gameStateRef.current.keys.left = false;
+              }}
+              onPointerLeave={(e) => {
+                e.preventDefault();
+                gameStateRef.current.keys.left = false;
+              }}
+              onPointerCancel={(e) => {
+                e.preventDefault();
+                gameStateRef.current.keys.left = false;
+              }}
+              className="w-13 h-13 sm:w-16 sm:h-16 rounded-2xl bg-slate-900/85 active:bg-slate-950 active:scale-95 text-white border border-white/20 shadow-lg backdrop-blur-md flex items-center justify-center text-xl sm:text-2xl font-bold select-none touch-none transition-transform"
+            >
+              ◀
+            </button>
+            <button
+              type="button"
+              aria-label="Move Right"
+              onPointerDown={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                initAudio();
+                triggerStart();
+                gameStateRef.current.keys.right = true;
+              }}
+              onPointerUp={(e) => {
+                e.preventDefault();
+                gameStateRef.current.keys.right = false;
+              }}
+              onPointerLeave={(e) => {
+                e.preventDefault();
+                gameStateRef.current.keys.right = false;
+              }}
+              onPointerCancel={(e) => {
+                e.preventDefault();
+                gameStateRef.current.keys.right = false;
+              }}
+              className="w-13 h-13 sm:w-16 sm:h-16 rounded-2xl bg-slate-900/85 active:bg-slate-950 active:scale-95 text-white border border-white/20 shadow-lg backdrop-blur-md flex items-center justify-center text-xl sm:text-2xl font-bold select-none touch-none transition-transform"
+            >
+              ▶
+            </button>
           </div>
 
-          {/* Exit / Restart Button */}
-          <button
-            onClick={() => {
-              initAudio();
-              if (!isGameOver) {
-                gameStateRef.current.lives = 0;
-                setLives(0);
-                gameStateRef.current.isGameOver = true;
-                setFinalScore(gameStateRef.current.score);
-                setIsGameOver(true);
-                playSound('gameover');
-              } else {
-                resetGame();
-              }
-            }}
-            className="pointer-events-auto font-mono text-xs sm:text-sm font-medium text-slate-900 bg-white border border-slate-300 hover:border-slate-400 hover:bg-slate-50 active:translate-y-0.5 rounded-md px-4 py-1.5 shadow-xs transition-all"
-          >
-            {isGameOver ? 'Play again' : 'Exit game'}
-          </button>
-        </div>
-      </div>
+          {/* Quick Exit / Restart on Touch Dock */}
+          <div className="pointer-events-auto flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                initAudio();
+                if (!isGameOver) {
+                  gameStateRef.current.lives = 0;
+                  setLives(0);
+                  gameStateRef.current.isGameOver = true;
+                  setFinalScore(gameStateRef.current.score);
+                  setIsGameOver(true);
+                  playSound('gameover');
+                } else {
+                  resetGame();
+                }
+              }}
+              className="font-mono text-[11px] sm:text-xs font-medium text-slate-300 hover:text-white bg-slate-900/70 active:bg-slate-950 border border-white/10 rounded-lg px-2.5 py-1.5 backdrop-blur-md transition-all select-none shadow-sm"
+            >
+              {isGameOver ? 'Play again' : 'Exit'}
+            </button>
+          </div>
 
-      {/* On-Screen Mobile Touch Controls */}
-      <div className="sm:hidden absolute bottom-16 left-0 w-full px-6 flex justify-between pointer-events-none z-20">
-        <div className="flex gap-3 pointer-events-auto">
-          <button
-            onPointerDown={() => {
-              initAudio();
-              triggerStart();
-              gameStateRef.current.keys.left = true;
-            }}
-            onPointerUp={() => {
-              gameStateRef.current.keys.left = false;
-            }}
-            onPointerLeave={() => {
-              gameStateRef.current.keys.left = false;
-            }}
-            className="w-14 h-14 rounded-xl bg-white/85 active:bg-slate-200 border border-slate-300 shadow-md flex items-center justify-center text-xl font-bold text-slate-800"
-          >
-            ◀
-          </button>
-          <button
-            onPointerDown={() => {
-              initAudio();
-              triggerStart();
-              gameStateRef.current.keys.right = true;
-            }}
-            onPointerUp={() => {
-              gameStateRef.current.keys.right = false;
-            }}
-            onPointerLeave={() => {
-              gameStateRef.current.keys.right = false;
-            }}
-            className="w-14 h-14 rounded-xl bg-white/85 active:bg-slate-200 border border-slate-300 shadow-md flex items-center justify-center text-xl font-bold text-slate-800"
-          >
-            ▶
-          </button>
+          {/* Jump Button (Right Thumb Zone) */}
+          <div className="pointer-events-auto">
+            <button
+              type="button"
+              aria-label="Jump (Double-Jump 2x)"
+              onPointerDown={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                initAudio();
+                triggerStart();
+                handleJump();
+                gameStateRef.current.keys.jump = true;
+              }}
+              onPointerUp={(e) => {
+                e.preventDefault();
+                gameStateRef.current.keys.jump = false;
+              }}
+              onPointerCancel={(e) => {
+                e.preventDefault();
+                gameStateRef.current.keys.jump = false;
+              }}
+              className="w-14 h-14 sm:w-18 sm:h-18 rounded-2xl bg-gradient-to-br from-indigo-600/90 to-purple-600/90 active:from-indigo-700 active:to-purple-700 active:scale-95 text-white border border-white/30 shadow-xl backdrop-blur-md flex flex-col items-center justify-center select-none touch-none transition-transform"
+            >
+              <span className="text-xl sm:text-2xl font-black leading-none">▲</span>
+              <span className="text-[9px] sm:text-[10px] font-mono font-bold tracking-wider text-purple-200 uppercase mt-0.5">
+                Jump 2x
+              </span>
+            </button>
+          </div>
         </div>
-        <div className="pointer-events-auto">
-          <button
-            onPointerDown={() => {
-              initAudio();
-              handleJump();
-              gameStateRef.current.keys.jump = true;
-            }}
-            onPointerUp={() => {
-              gameStateRef.current.keys.jump = false;
-            }}
-            className="w-14 h-14 rounded-xl bg-white/85 active:bg-slate-200 border border-slate-300 shadow-md flex items-center justify-center text-xl font-bold text-slate-800"
-          >
-            ▲
-          </button>
-        </div>
-      </div>
+      )}
 
       {/* Game Over Screen Modal */}
       {isGameOver && (

@@ -54,20 +54,20 @@ export default function CodeViewerModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 sm:p-6">
       <div className="bg-white rounded-xl shadow-2xl border border-slate-300 w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200 bg-slate-50">
           <div>
-            <h3 className="font-mono text-base font-bold text-slate-900">
+            <h3 className="font-mono text-sm sm:text-base font-bold text-slate-900">
               Standalone Single-File HTML Platformer Game
             </h3>
-            <p className="text-xs text-slate-500 font-sans mt-0.5">
-              100% self-contained HTML5 Canvas, Web Audio API, ES6 Physics & Pixel Art. No dependencies.
+            <p className="text-[11px] sm:text-xs text-slate-500 font-sans mt-0.5">
+              100% self-contained HTML5 Canvas, Web Audio API, ES6 Physics & Pixel Art.
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
             <button
               onClick={handleCopy}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono font-medium rounded-md bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 active:bg-slate-200 transition-colors"
+              className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-mono font-medium rounded-md bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 active:bg-slate-200 transition-colors"
             >
               {copied ? (
                 <>
@@ -77,7 +77,7 @@ export default function CodeViewerModal({
               ) : (
                 <>
                   <Copy className="w-3.5 h-3.5" />
-                  <span>Copy Code</span>
+                  <span>Copy</span>
                 </>
               )}
             </button>
@@ -85,17 +85,17 @@ export default function CodeViewerModal({
             <a
               href="/game.html"
               download="octo-platformer.html"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono font-medium rounded-md bg-slate-900 text-white hover:bg-slate-800 transition-colors"
+              className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-mono font-medium rounded-md bg-slate-900 text-white hover:bg-slate-800 transition-colors"
             >
               <Download className="w-3.5 h-3.5" />
-              <span>Download .html</span>
+              <span>Download</span>
             </a>
 
             <a
               href="/game.html"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono font-medium rounded-md bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 transition-colors"
+              className="hidden sm:inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-mono font-medium rounded-md bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 transition-colors"
               title="Open standalone file directly in new tab"
             >
               <ExternalLink className="w-3.5 h-3.5" />
@@ -104,7 +104,7 @@ export default function CodeViewerModal({
 
             <button
               onClick={onClose}
-              className="text-slate-400 hover:text-slate-600 p-1.5 rounded-md hover:bg-slate-200 transition-colors ml-1"
+              className="text-slate-400 hover:text-slate-600 p-1.5 rounded-md hover:bg-slate-200 transition-colors ml-auto sm:ml-1"
               aria-label="Close modal"
             >
               <X className="w-5 h-5" />
@@ -126,9 +126,9 @@ export default function CodeViewerModal({
         </div>
 
         {/* Footer info */}
-        <div className="px-6 py-2.5 bg-slate-100 border-t border-slate-200 text-xs text-slate-500 font-mono flex items-center justify-between">
-          <span>Save this as any <code className="bg-white px-1.5 py-0.5 rounded border border-slate-300 text-slate-800 font-bold">.html</code> file on your computer and double-click to play offline!</span>
-          <span>~800 lines · 0 external files</span>
+        <div className="px-4 sm:px-6 py-2.5 bg-slate-100 border-t border-slate-200 text-xs text-slate-500 font-mono flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1">
+          <span>Save this as any <code className="bg-white px-1.5 py-0.5 rounded border border-slate-300 text-slate-800 font-bold">.html</code> file on your device and double-click to play!</span>
+          <span className="hidden sm:inline">~800 lines · 0 external files</span>
         </div>
       </div>
     </div>
