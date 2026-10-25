@@ -60,6 +60,7 @@ interface Collectible {
 const TILE_SIZE = 24;
 const GRAVITY = 0.58;
 const JUMP_FORCE = -11.4;
+const SECOND_JUMP_FORCE = -14.2; // Increased jump height for the second jump (extra vertical lift)
 const SCROLL_SPEED = 2.6; // Continuous forward camera speed
 const MOVE_SPEED = 3.2;   // Relative player adjust speed
 const MAX_JUMPS = 2;      // Allow jumping up to 2 times before hitting ground (double-jump / 2x)
@@ -590,7 +591,7 @@ export default function OctoPlatformerGame({
         state.player.vy = JUMP_FORCE; // -11.4: initial strong ground jump
         playSound('jump', 1);
       } else {
-        state.player.vy = -10.8; // 2nd jump: elevates further up (2x jump)
+        state.player.vy = SECOND_JUMP_FORCE; // -14.2: increased jump height for the second jump
         playSound('jump', 2);
       }
 
@@ -599,7 +600,7 @@ export default function OctoPlatformerGame({
         ? ['#38bdf8', '#0284c7', '#67e8f9', '#ffffff', '#93c5fd']
         : ['#94a3b8', '#64748b', '#cbd5e1', '#ffffff', '#475569'];
 
-      const sparkCount = state.player.jumpCount === 1 ? 10 : 14;
+      const sparkCount = state.player.jumpCount === 1 ? 10 : 16;
       const feetX = state.player.x + state.player.width / 2;
       const feetY = state.player.y + state.player.height;
 

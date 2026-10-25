@@ -884,6 +884,7 @@
       const TILE_SIZE = 24;
       const GRAVITY = 0.58;
       const JUMP_FORCE = -11.4;
+      const SECOND_JUMP_FORCE = -14.2; // Increased jump height for the second jump (extra vertical lift)
       const SCROLL_SPEED = 2.6; // Continuous forward auto-scroll speed
       const MOVE_SPEED = 3.2;   // Relative player adjust speed
       const MAX_LIVES = 3;
@@ -1412,7 +1413,7 @@
             player.vy = JUMP_FORCE; // -11.4: initial strong ground jump
             sounds.playJump(1);
           } else {
-            player.vy = -10.8; // 2nd jump: elevates further up (2x jump)
+            player.vy = SECOND_JUMP_FORCE; // -14.2: increased jump height for the 2nd jump
             sounds.playJump(2);
           }
 
@@ -1421,7 +1422,7 @@
             ? ['#38bdf8', '#0284c7', '#67e8f9', '#ffffff', '#93c5fd']
             : ['#94a3b8', '#64748b', '#cbd5e1', '#ffffff', '#475569'];
 
-          const sparkCount = player.jumpCount === 1 ? 10 : 14;
+          const sparkCount = player.jumpCount === 1 ? 10 : 16;
           const feetX = player.x + player.width / 2;
           const feetY = player.y + player.height;
 
