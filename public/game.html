@@ -505,11 +505,86 @@
       background: linear-gradient(90deg, #facc15, #ec4899, #06b6d4);
       transition: width 0.08s linear;
     }
+
+    /* Screen Edge Hold Indicators */
+    .edge-indicator {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 100px;
+      pointer-events: none;
+      z-index: 15;
+      display: flex;
+      align-items: center;
+      transition: background 0.15s ease, opacity 0.15s ease;
+      touch-action: none;
+    }
+
+    .edge-left {
+      left: 0;
+      justify-content: flex-start;
+      padding-left: 14px;
+      background: linear-gradient(90deg, rgba(99, 102, 241, 0.05), transparent);
+    }
+
+    .edge-right {
+      right: 0;
+      justify-content: flex-end;
+      padding-right: 14px;
+      background: linear-gradient(270deg, rgba(99, 102, 241, 0.05), transparent);
+    }
+
+    .edge-indicator.active.edge-left {
+      background: linear-gradient(90deg, rgba(99, 102, 241, 0.32), rgba(99, 102, 241, 0.10), transparent);
+    }
+
+    .edge-indicator.active.edge-right {
+      background: linear-gradient(270deg, rgba(99, 102, 241, 0.32), rgba(99, 102, 241, 0.10), transparent);
+    }
+
+    .edge-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 8px;
+      font-family: ui-monospace, SFMono-Regular, monospace;
+      font-size: 11px;
+      font-weight: 700;
+      background: rgba(255, 255, 255, 0.7);
+      border: 1px solid rgba(209, 213, 219, 0.9);
+      color: #4b5563;
+      backdrop-filter: blur(4px);
+      transition: all 0.15s ease;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    }
+
+    .edge-indicator.active .edge-badge {
+      background: #4f46e5;
+      border-color: #818cf8;
+      color: #ffffff;
+      transform: scale(1.05);
+      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.35);
+    }
   </style>
 </head>
 <body>
   <div id="game-container">
     <div class="top-accent-band"></div>
+
+    <!-- Screen Edge Hold Indicators -->
+    <div id="edge-left-indicator" class="edge-indicator edge-left">
+      <div class="edge-badge">
+        <span style="font-size:14px; line-height:1;">◀</span>
+        <span>HOLD TO RUN</span>
+      </div>
+    </div>
+    <div id="edge-right-indicator" class="edge-indicator edge-right">
+      <div class="edge-badge">
+        <span>HOLD TO RUN</span>
+        <span style="font-size:14px; line-height:1;">▶</span>
+      </div>
+    </div>
 
     <!-- Active Rainbow Companion Banner with Progress Bar & Countdown -->
     <div id="rainbow-banner" class="rainbow-banner">
@@ -538,9 +613,9 @@
         <div class="hud-controls-banner">
           <span class="key-badge">←</span>
           <span class="key-badge">→</span>
-          <span>run & dodge</span>
+          <span>or hold edges to run</span>
           <span style="color:#d0d7de">|</span>
-          <span class="key-badge">Space / Click</span>
+          <span class="key-badge">Space / Tap</span>
           <span>double-jump (2x)</span>
         </div>
 
@@ -848,14 +923,7 @@
         updateSoundIcon();
       });
 
-      // Allow clicking or tapping canvas to jump
-      canvas.addEventListener('pointerdown', () => {
-        sounds.init();
-        triggerGameStart();
-        handleJumpAction();
-      });
-
-      // --- INPUT HANDLING ---
+      // --- INPUT & EDGE HOLD CONTROLS ---
       let gameStarted = false;
       const keys = {
         left: false,
@@ -863,11 +931,120 @@
         jump: false
       };
 
+      const activePointers = new Map();
+      const edgeLeftIndicator = document.getElementById('edge-left-indicator');
+      const edgeRightIndicator = document.getElementById('edge-right-indicator');
+
+      function updateEdgeHoldState() {
+        let hasLeft = false;
+        let hasRight = false;
+        activePointers.forEach(info => {
+          if (info.zone === 'left') hasLeft = true;
+          if (info.zone === 'right') hasRight = true;
+        });
+        keys.left = hasLeft;
+        keys.right = hasRight;
+        if (edgeLeftIndicator) {
+          if (hasLeft) edgeLeftIndicator.classList.add('active');
+          else edgeLeftIndicator.classList.remove('active');
+        }
+        if (edgeRightIndicator) {
+          if (hasRight) edgeRightIndicator.classList.add('active');
+          else edgeRightIndicator.classList.remove('active');
+        }
+      }
+
       function triggerGameStart() {
         if (!gameStarted) {
           gameStarted = true;
         }
       }
+
+      const container = document.getElementById('game-container');
+
+      container.addEventListener('pointerdown', (e) => {
+        // Do not intercept interactive buttons (exit, sound, modal buttons)
+        if (e.target.closest('button, a')) return;
+
+        sounds.init();
+        triggerGameStart();
+
+        const rect = container.getBoundingClientRect();
+        const relX = e.clientX - rect.left;
+        const width = rect.width;
+        const edgeRatio = 0.30; // 30% of screen edge
+
+        let zone = 'center';
+        if (relX < width * edgeRatio) {
+          zone = 'left';
+        } else if (relX > width * (1 - edgeRatio)) {
+          zone = 'right';
+        } else {
+          zone = 'center';
+          handleJumpAction();
+        }
+
+        activePointers.set(e.pointerId, { zone });
+        updateEdgeHoldState();
+
+        try {
+          container.setPointerCapture(e.pointerId);
+        } catch (_) {}
+      });
+
+      container.addEventListener('pointermove', (e) => {
+        if (!activePointers.has(e.pointerId)) return;
+        const rect = container.getBoundingClientRect();
+        const relX = e.clientX - rect.left;
+        const width = rect.width;
+        const edgeRatio = 0.30;
+
+        let zone = 'center';
+        if (relX < width * edgeRatio) {
+          zone = 'left';
+        } else if (relX > width * (1 - edgeRatio)) {
+          zone = 'right';
+        } else {
+          zone = 'center';
+        }
+
+        const curr = activePointers.get(e.pointerId);
+        if (curr && curr.zone !== zone) {
+          curr.zone = zone;
+          updateEdgeHoldState();
+        }
+      });
+
+      container.addEventListener('pointerup', (e) => {
+        if (activePointers.has(e.pointerId)) {
+          activePointers.delete(e.pointerId);
+          updateEdgeHoldState();
+        }
+        try {
+          if (container.hasPointerCapture(e.pointerId)) {
+            container.releasePointerCapture(e.pointerId);
+          }
+        } catch (_) {}
+      });
+
+      container.addEventListener('pointercancel', (e) => {
+        if (activePointers.has(e.pointerId)) {
+          activePointers.delete(e.pointerId);
+          updateEdgeHoldState();
+        }
+      });
+
+      window.addEventListener('pointerup', () => {
+        if (activePointers.size > 0) {
+          activePointers.clear();
+          updateEdgeHoldState();
+        }
+      });
+
+      window.addEventListener('blur', () => {
+        activePointers.clear();
+        updateEdgeHoldState();
+      });
 
       window.addEventListener('keydown', (e) => {
         sounds.init();
@@ -1167,6 +1344,8 @@
         lives = MAX_LIVES;
         isGameOver = false;
         gameStarted = false;
+        activePointers.clear();
+        updateEdgeHoldState();
         gameOverModal.classList.remove('visible');
         hudScore.textContent = '0';
         renderHearts();

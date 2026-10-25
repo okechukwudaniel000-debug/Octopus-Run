@@ -96,6 +96,9 @@ export default function OctoPlatformerGame({
   const [isRainbowActive, setIsRainbowActive] = useState<boolean>(false);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [showTouchControls, setShowTouchControls] = useState<boolean>(false);
+  const [holdingLeft, setHoldingLeft] = useState<boolean>(false);
+  const [holdingRight, setHoldingRight] = useState<boolean>(false);
+  const activePointersRef = useRef<Map<number, { zone: 'left' | 'right' | 'center' }>>(new Map());
 
   // Responsive touch & screen size detection for mobile & tablet
   useEffect(() => {
@@ -506,6 +509,12 @@ export default function OctoPlatformerGame({
     state.player.rainbowTimer = 0;
     state.player.companion.active = false;
 
+    activePointersRef.current.clear();
+    state.keys.left = false;
+    state.keys.right = false;
+    setHoldingLeft(false);
+    setHoldingRight(false);
+
     setScore(0);
     setLives(3);
     setIsGameOver(false);
@@ -656,6 +665,119 @@ export default function OctoPlatformerGame({
       window.removeEventListener('keyup', onKeyUp);
     };
   }, [handleJump, initAudio, triggerStart]);
+
+  // Touch and pointer edge-hold handlers (holding screen edges runs left / right)
+  const updateEdgeHoldState = useCallback(() => {
+    let hasLeft = false;
+    let hasRight = false;
+    activePointersRef.current.forEach((info) => {
+      if (info.zone === 'left') hasLeft = true;
+      if (info.zone === 'right') hasRight = true;
+    });
+    const state = gameStateRef.current;
+    state.keys.left = hasLeft;
+    state.keys.right = hasRight;
+    setHoldingLeft(hasLeft);
+    setHoldingRight(hasRight);
+  }, []);
+
+  const handlePointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    // If clicking a HUD button, anchor, or modal button, don't intercept
+    if ((e.target as HTMLElement).closest('button, a')) return;
+
+    initAudio();
+    triggerStart();
+
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    const relX = e.clientX - rect.left;
+    const width = rect.width;
+    const edgeRatio = 0.30; // 30% of screen edge on left and right
+
+    let zone: 'left' | 'right' | 'center' = 'center';
+    if (relX < width * edgeRatio) {
+      zone = 'left';
+    } else if (relX > width * (1 - edgeRatio)) {
+      zone = 'right';
+    } else {
+      zone = 'center';
+      // Center tap triggers jump
+      handleJump();
+    }
+
+    activePointersRef.current.set(e.pointerId, { zone });
+    updateEdgeHoldState();
+
+    try {
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    } catch {}
+  }, [handleJump, initAudio, triggerStart, updateEdgeHoldState]);
+
+  const handlePointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (!activePointersRef.current.has(e.pointerId)) return;
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    const relX = e.clientX - rect.left;
+    const width = rect.width;
+    const edgeRatio = 0.30;
+
+    let zone: 'left' | 'right' | 'center' = 'center';
+    if (relX < width * edgeRatio) {
+      zone = 'left';
+    } else if (relX > width * (1 - edgeRatio)) {
+      zone = 'right';
+    } else {
+      zone = 'center';
+    }
+
+    const current = activePointersRef.current.get(e.pointerId);
+    if (current && current.zone !== zone) {
+      current.zone = zone;
+      updateEdgeHoldState();
+    }
+  }, [updateEdgeHoldState]);
+
+  const handlePointerUp = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (activePointersRef.current.has(e.pointerId)) {
+      activePointersRef.current.delete(e.pointerId);
+      updateEdgeHoldState();
+    }
+    try {
+      if ((e.currentTarget as HTMLElement).hasPointerCapture(e.pointerId)) {
+        (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+      }
+    } catch {}
+  }, [updateEdgeHoldState]);
+
+  const handlePointerCancel = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (activePointersRef.current.has(e.pointerId)) {
+      activePointersRef.current.delete(e.pointerId);
+      updateEdgeHoldState();
+    }
+  }, [updateEdgeHoldState]);
+
+  // Window pointer safety cleanup
+  useEffect(() => {
+    const clearPointers = () => {
+      if (activePointersRef.current.size > 0) {
+        activePointersRef.current.clear();
+        gameStateRef.current.keys.left = false;
+        gameStateRef.current.keys.right = false;
+        setHoldingLeft(false);
+        setHoldingRight(false);
+      }
+    };
+    window.addEventListener('pointerup', clearPointers);
+    window.addEventListener('pointercancel', clearPointers);
+    window.addEventListener('blur', clearPointers);
+    return () => {
+      window.removeEventListener('pointerup', clearPointers);
+      window.removeEventListener('pointercancel', clearPointers);
+      window.removeEventListener('blur', clearPointers);
+    };
+  }, []);
 
   // Main Canvas Loop
   useEffect(() => {
@@ -1391,10 +1513,54 @@ export default function OctoPlatformerGame({
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-full overflow-hidden bg-[#f4f4f4] select-none font-sans"
+      className="relative w-full h-full overflow-hidden bg-[#f4f4f4] select-none font-sans touch-none"
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerCancel}
     >
       {/* Top decorative purple band */}
       <div className="absolute top-0 left-0 w-full h-[12px] bg-gradient-to-r from-purple-600 via-fuchsia-500 to-indigo-600 z-20 pointer-events-none" />
+
+      {/* Screen Left Edge Hold Indicator */}
+      <div
+        className={`absolute left-0 top-0 bottom-0 w-24 sm:w-32 pointer-events-none z-15 transition-all duration-150 flex items-center justify-start pl-3 sm:pl-4 ${
+          holdingLeft
+            ? 'bg-gradient-to-r from-indigo-500/35 via-indigo-500/10 to-transparent'
+            : 'bg-gradient-to-r from-indigo-500/5 to-transparent'
+        }`}
+      >
+        <div
+          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border backdrop-blur-xs font-mono text-[11px] sm:text-xs font-bold transition-all ${
+            holdingLeft
+              ? 'bg-indigo-600 text-white border-indigo-400 shadow-lg scale-105'
+              : 'bg-white/70 text-slate-600 border-slate-300 shadow-xs opacity-75'
+          }`}
+        >
+          <span className="text-sm sm:text-base leading-none">◀</span>
+          <span className="hidden sm:inline">HOLD TO RUN</span>
+        </div>
+      </div>
+
+      {/* Screen Right Edge Hold Indicator */}
+      <div
+        className={`absolute right-0 top-0 bottom-0 w-24 sm:w-32 pointer-events-none z-15 transition-all duration-150 flex items-center justify-end pr-3 sm:pr-4 ${
+          holdingRight
+            ? 'bg-gradient-to-l from-indigo-500/35 via-indigo-500/10 to-transparent'
+            : 'bg-gradient-to-l from-indigo-500/5 to-transparent'
+        }`}
+      >
+        <div
+          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border backdrop-blur-xs font-mono text-[11px] sm:text-xs font-bold transition-all ${
+            holdingRight
+              ? 'bg-indigo-600 text-white border-indigo-400 shadow-lg scale-105'
+              : 'bg-white/70 text-slate-600 border-slate-300 shadow-xs opacity-75'
+          }`}
+        >
+          <span className="hidden sm:inline">HOLD TO RUN</span>
+          <span className="text-sm sm:text-base leading-none">▶</span>
+        </div>
+      </div>
 
       {/* Rainbow Active Banner with Progress Bar & Countdown Timer */}
       {isRainbowActive && (
@@ -1424,12 +1590,6 @@ export default function OctoPlatformerGame({
       <canvas
         ref={canvasRef}
         className="block w-full h-full cursor-pointer select-none"
-        onPointerDown={() => {
-          // Allow tapping anywhere on canvas to trigger jump
-          initAudio();
-          triggerStart();
-          handleJump();
-        }}
       />
 
       {/* HUD Layer */}
@@ -1468,10 +1628,10 @@ export default function OctoPlatformerGame({
             <span className="inline-flex items-center justify-center bg-white border border-slate-300 border-b-2 border-b-slate-400 rounded px-1.5 py-0.5 font-bold text-[11px] text-slate-800 min-w-5">
               →
             </span>
-            <span className="text-slate-600">run & dodge</span>
+            <span className="text-slate-600">or hold edges to run</span>
             <span className="text-slate-300">|</span>
             <span className="inline-flex items-center justify-center bg-white border border-slate-300 border-b-2 border-b-slate-400 rounded px-2 py-0.5 font-bold text-[11px] text-slate-800">
-              Space / Click
+              Space / Tap
             </span>
             <span className="text-slate-600">double-jump (2x)</span>
           </div>
