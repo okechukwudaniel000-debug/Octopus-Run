@@ -886,7 +886,8 @@
       const JUMP_FORCE = -11.4;
       const SECOND_JUMP_FORCE = -14.2; // Increased jump height for the second jump (extra vertical lift)
       const SCROLL_SPEED = 2.6; // Continuous forward auto-scroll speed
-      const MOVE_SPEED = 3.2;   // Relative player adjust speed
+      const MOVE_SPEED = 3.6;   // Relative forward player adjust speed
+      const MOVE_SPEED_BACKWARD = 5.8; // Fast, responsive backward retreat speed against auto-scroll
       const MAX_LIVES = 3;
       const MAX_JUMPS = 2;      // Allow jumping up to 2 times before hitting ground (double-jump / 2x)
       const RAINBOW_DURATION = 60 * 15; // 15 seconds at 60 FPS
@@ -1837,11 +1838,11 @@
           collectibles = collectibles.filter(c => c.x + c.width > discardX);
         }
 
-        // Horizontal Steer
+        // Horizontal Steer (fast backward retreat to quickly reposition against auto-scroll)
         if (keys.left) {
-          player.vx = -MOVE_SPEED;
+          player.vx = -MOVE_SPEED_BACKWARD;
           player.facing = -1;
-          player.walkFrame++;
+          player.walkFrame += 1.5;
         } else if (keys.right) {
           player.vx = MOVE_SPEED;
           player.facing = 1;

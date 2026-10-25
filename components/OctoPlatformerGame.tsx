@@ -62,7 +62,8 @@ const GRAVITY = 0.58;
 const JUMP_FORCE = -11.4;
 const SECOND_JUMP_FORCE = -14.2; // Increased jump height for the second jump (extra vertical lift)
 const SCROLL_SPEED = 2.6; // Continuous forward camera speed
-const MOVE_SPEED = 3.2;   // Relative player adjust speed
+const MOVE_SPEED = 3.6;   // Relative forward player adjust speed
+const MOVE_SPEED_BACKWARD = 5.8; // Fast, responsive backward retreat speed against auto-scroll
 const MAX_JUMPS = 2;      // Allow jumping up to 2 times before hitting ground (double-jump / 2x)
 const RAINBOW_DURATION = 60 * 15; // 15 seconds at 60 FPS
 
@@ -885,11 +886,11 @@ export default function OctoPlatformerGame({
           state.collectibles = state.collectibles.filter((c) => c.x + c.width > discardX);
         }
 
-        // Horizontal steer
+        // Horizontal steer (fast backward retreat to quickly reposition against auto-scroll)
         if (state.keys.left) {
-          state.player.vx = -MOVE_SPEED;
+          state.player.vx = -MOVE_SPEED_BACKWARD;
           state.player.facing = -1;
-          state.player.walkFrame++;
+          state.player.walkFrame += 1.5;
         } else if (state.keys.right) {
           state.player.vx = MOVE_SPEED;
           state.player.facing = 1;
