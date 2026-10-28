@@ -51,9 +51,11 @@ interface Collectible {
   width: number;
   height: number;
   baseY: number;
-  type: 'yellow' | 'orange' | 'purple' | 'green' | 'blue' | 'quad' | 'chick' | 'rainbow';
+  type: 'yellow' | 'orange' | 'purple' | 'green' | 'blue' | 'quad' | 'chick' | 'rainbow' | 'magnet';
   collected: boolean;
   bobOffset: number;
+  vx?: number;
+  vy?: number;
 }
 
 // Module-level physics and runner constants
@@ -66,6 +68,7 @@ const MOVE_SPEED = 3.6;   // Relative forward player adjust speed
 const MOVE_SPEED_BACKWARD = 5.8; // Fast, responsive backward retreat speed against auto-scroll
 const MAX_JUMPS = 2;      // Allow jumping up to 2 times before hitting ground (double-jump / 2x)
 const RAINBOW_DURATION = 60 * 15; // 15 seconds at 60 FPS
+const MAGNET_DURATION = 60 * 12;  // 12 seconds at 60 FPS (user confirmed)
 
 export default function OctoPlatformerGame({
   onOpenCodeViewer,
@@ -77,6 +80,8 @@ export default function OctoPlatformerGame({
   const audioCtxRef = useRef<AudioContext | null>(null);
   const rainbowBarRef = useRef<HTMLDivElement | null>(null);
   const rainbowTextRef = useRef<HTMLSpanElement | null>(null);
+  const magnetBarRef = useRef<HTMLDivElement | null>(null);
+  const magnetTextRef = useRef<HTMLSpanElement | null>(null);
 
   const [score, setScore] = useState<number>(0);
   const [highScore, setHighScore] = useState<number>(() => {
@@ -96,6 +101,7 @@ export default function OctoPlatformerGame({
     return false;
   });
   const [isRainbowActive, setIsRainbowActive] = useState<boolean>(false);
+  const [isMagnetActive, setIsMagnetActive] = useState<boolean>(false);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [showTouchControls, setShowTouchControls] = useState<boolean>(false);
   const [holdingLeft, setHoldingLeft] = useState<boolean>(false);
@@ -131,7 +137,7 @@ export default function OctoPlatformerGame({
     }
   }, []);
 
-  const playSound = useCallback((type: 'jump' | 'collect' | 'rainbow' | 'stomp' | 'damage' | 'gameover' | 'shatter', val = 1) => {
+  const playSound = useCallback((type: 'jump' | 'collect' | 'rainbow' | 'magnet' | 'stomp' | 'damage' | 'gameover' | 'shatter', val = 1) => {
     if (isMuted) return;
     initAudio();
     const ctx = audioCtxRef.current;
@@ -173,6 +179,21 @@ export default function OctoPlatformerGame({
         gain.connect(ctx.destination);
         osc.start(now + idx * 0.05);
         osc.stop(now + idx * 0.05 + 0.2);
+      });
+    } else if (type === 'magnet') {
+      // Resonant rising magnetic field charge sound
+      const magneticFrequencies = [293.66, 440.00, 587.33, 880.00, 1174.66];
+      magneticFrequencies.forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, now + idx * 0.04);
+        gain.gain.setValueAtTime(0.12, now + idx * 0.04);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.04 + 0.28);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + idx * 0.04);
+        osc.stop(now + idx * 0.04 + 0.3);
       });
     } else if (type === 'rainbow') {
       const chords = [440, 554, 659, 830, 880, 1108];
@@ -285,6 +306,7 @@ export default function OctoPlatformerGame({
       invulnerableTimer: 0,
       walkFrame: 0,
       rainbowTimer: 0,
+      magnetTimer: 0,
       companion: {
         x: 130,
         y: 394,
@@ -373,7 +395,7 @@ export default function OctoPlatformerGame({
       // Ground runway with gems and a ground bug
       addC(startG + 6, groundGridY, 'quad');
       addBug(startG + 10, groundGridY, 6);
-      addC(startG + 18, groundGridY, 'yellow');
+      addC(startG + 18, groundGridY, 'magnet'); // Horseshoe magnet power-up!
       state.maxGeneratedX = (startG + 25) * TILE_SIZE;
     } else if (pattern === 2) {
       // Stepping stone high path with ground continuously walkable underneath
@@ -403,7 +425,7 @@ export default function OctoPlatformerGame({
     } else if (pattern === 4) {
       // Wide open ground run with alternating bugs and items
       addP(startG + 8, groundGridY - 4, 6);
-      addC(startG + 10, groundGridY - 4, 'orange');
+      addC(startG + 10, groundGridY - 4, 'magnet'); // Horseshoe magnet power-up!
 
       addC(startG + 3, groundGridY, 'yellow');
       addBug(startG + 5, groundGridY, 5);
@@ -477,7 +499,7 @@ export default function OctoPlatformerGame({
 
     // Initial floating practice tier
     addP(12, groundGridY - 3, 6);
-    addC(14, groundGridY - 3, 'orange');
+    addC(14, groundGridY - 3, 'magnet'); // Horseshoe magnet pickup on first floating platform!
 
     // Collectibles right on the ground floor (ahead of spawn point)
     addC(9, groundGridY, 'yellow');
@@ -524,6 +546,7 @@ export default function OctoPlatformerGame({
     state.player.jumpCount = 0;
     state.player.invulnerableTimer = 90;
     state.player.rainbowTimer = 0;
+    state.player.magnetTimer = 0;
     state.player.companion.active = false;
 
     activePointersRef.current.clear();
@@ -536,6 +559,7 @@ export default function OctoPlatformerGame({
     setLives(3);
     setIsGameOver(false);
     setIsRainbowActive(false);
+    setIsMagnetActive(false);
 
     buildInitialWorld();
   }, [buildInitialWorld]);
@@ -564,9 +588,11 @@ export default function OctoPlatformerGame({
       palette = ['#facc15', '#fbbf24', '#f97316', '#ffffff', '#fef08a'];
     } else if (type === 'rainbow') {
       palette = ['#ec4899', '#8b5cf6', '#3b82f6', '#10b981', '#f59e0b', '#ffffff'];
+    } else if (type === 'magnet') {
+      palette = ['#06b6d4', '#38bdf8', '#818cf8', '#dc2626', '#ffffff'];
     }
 
-    const count = type === 'rainbow' ? 24 : type === 'chick' || type === 'quad' ? 18 : 12;
+    const count = type === 'rainbow' || type === 'magnet' ? 24 : type === 'chick' || type === 'quad' ? 18 : 12;
 
     for (let i = 0; i < count; i++) {
       const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.45;
@@ -881,6 +907,76 @@ export default function OctoPlatformerGame({
           }
         }
 
+        if (state.player.magnetTimer > 0) {
+          state.player.magnetTimer--;
+          const pct = Math.max(0, (state.player.magnetTimer / MAGNET_DURATION) * 100);
+          const remainingSec = (state.player.magnetTimer / 60).toFixed(1);
+
+          if (magnetBarRef.current) {
+            magnetBarRef.current.style.width = `${pct}%`;
+          }
+          if (magnetTextRef.current) {
+            magnetTextRef.current.textContent = `${remainingSec}s`;
+          }
+
+          if (state.player.magnetTimer <= 0) {
+            setIsMagnetActive(false);
+          } else {
+            // Magnetic attraction physics: attract all visible score blocks across the full screen towards Octocat!
+            const playerCenterX = state.player.x + state.player.width / 2;
+            const playerCenterY = state.player.y + state.player.height / 2;
+            const screenLeft = state.camera.x - 40;
+            const screenRight = state.camera.x + cvs.width + 120;
+
+            for (const c of state.collectibles) {
+              if (c.collected || c.type === 'magnet') continue;
+              if (c.x >= screenLeft && c.x <= screenRight) {
+                const dx = playerCenterX - (c.x + c.width / 2);
+                const dy = playerCenterY - (c.baseY + c.height / 2);
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist > 3) {
+                  // Strong, progressive acceleration pulling towards Octocat
+                  const pullSpeed = Math.min(14, Math.max(5.5, 12 - (dist / cvs.width) * 4));
+                  const nx = dx / dist;
+                  const ny = dy / dist;
+                  c.vx = (c.vx || 0) * 0.88 + nx * pullSpeed;
+                  c.vy = (c.vy || 0) * 0.88 + ny * pullSpeed;
+                  c.x += c.vx;
+                  c.baseY += c.vy;
+
+                  // Magnetic flux trail particles towards Octocat
+                  if (state.frameCount % 5 === 0 && Math.random() < 0.4) {
+                    state.particles.push({
+                      x: c.x + c.width / 2,
+                      y: c.baseY + c.height / 2,
+                      vx: nx * 3 + (Math.random() - 0.5) * 1.5,
+                      vy: ny * 3 + (Math.random() - 0.5) * 1.5,
+                      color: Math.random() < 0.5 ? '#38bdf8' : '#818cf8',
+                      size: 2.5,
+                      life: 14,
+                    });
+                  }
+                }
+              }
+            }
+
+            // Magnetic field sparkle pulses around player
+            if (state.frameCount % 4 === 0) {
+              const angle = Math.random() * Math.PI * 2;
+              const radius = 22 + Math.random() * 26;
+              state.particles.push({
+                x: playerCenterX + Math.cos(angle) * radius,
+                y: playerCenterY + Math.sin(angle) * radius,
+                vx: -Math.cos(angle) * 1.8,
+                vy: -Math.sin(angle) * 1.8,
+                color: Math.random() < 0.6 ? '#06b6d4' : '#6366f1',
+                size: 2.2,
+                life: 18,
+              });
+            }
+          }
+        }
+
         // CONTINUOUS CAMERA MOTION AUTO-SCROLL
         if (state.gameStarted) {
           state.camera.x += SCROLL_SPEED;
@@ -1115,7 +1211,22 @@ export default function OctoPlatformerGame({
           if (c.collected) continue;
           if (checkAABB(state.player, { x: c.x, y: c.baseY, width: c.width, height: c.height })) {
             c.collected = true;
-            if (c.type === 'rainbow') {
+            if (c.type === 'magnet') {
+              state.player.magnetTimer = MAGNET_DURATION;
+              setIsMagnetActive(true);
+              if (magnetBarRef.current) magnetBarRef.current.style.width = '100%';
+              if (magnetTextRef.current) magnetTextRef.current.textContent = '12.0s';
+              playSound('magnet');
+              spawnCollectSparks(c.x, c.baseY, 'magnet');
+              state.score += 100;
+              setScore(state.score);
+              state.floatingTexts.push({
+                text: '🧲 MAGNET!',
+                x: c.x,
+                y: c.y - 12,
+                alpha: 1.0,
+              });
+            } else if (c.type === 'rainbow') {
               state.player.rainbowTimer = RAINBOW_DURATION;
               state.player.companion.active = true;
               state.player.companion.x = state.player.x - 30;
@@ -1311,9 +1422,51 @@ export default function OctoPlatformerGame({
             ctx.fillStyle = colors[i];
             ctx.fillRect(i * 3.5, 0, 3.5, 16);
           }
-          ctx.strokeStyle = '#ffffff';
-          ctx.lineWidth = 1.5;
-          ctx.strokeRect(0, 0, 18, 16);
+        } else if (c.type === 'magnet') {
+          // Horseshoe Magnet Pickup Item
+          ctx.save();
+          const auraPulse = Math.sin(state.frameCount * 0.12 + c.bobOffset) * 0.2 + 0.8;
+          ctx.shadowColor = '#06b6d4';
+          ctx.shadowBlur = 8 * auraPulse;
+
+          // Red U-shaped body
+          ctx.fillStyle = '#dc2626';
+          ctx.beginPath();
+          ctx.arc(8, 7, 7, Math.PI, 0, false);
+          ctx.lineTo(15, 15);
+          ctx.lineTo(10.5, 15);
+          ctx.lineTo(10.5, 7.5);
+          ctx.arc(8, 7, 2.5, 0, Math.PI, true);
+          ctx.lineTo(5.5, 15);
+          ctx.lineTo(1, 15);
+          ctx.closePath();
+          ctx.fill();
+
+          ctx.shadowBlur = 0;
+
+          // Silver/metallic tips
+          ctx.fillStyle = '#f1f5f9';
+          ctx.fillRect(1, 11, 4.5, 4);
+          ctx.fillRect(10.5, 11, 4.5, 4);
+
+          // Specular highlights
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(2, 12, 2.5, 1.5);
+          ctx.fillRect(11.5, 12, 2.5, 1.5);
+
+          ctx.strokeStyle = '#1e293b';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(1, 11, 4.5, 4);
+          ctx.strokeRect(10.5, 11, 4.5, 4);
+
+          // Magnetic spark arc between poles
+          ctx.strokeStyle = '#38bdf8';
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          ctx.arc(8, 13, 3 + Math.sin(state.frameCount * 0.15) * 1.5, 0, Math.PI);
+          ctx.stroke();
+
+          ctx.restore();
         } else if (c.type === 'quad') {
           const sz = 8;
           ctx.fillStyle = '#ef4444'; ctx.fillRect(0, 0, sz, sz);
@@ -1497,6 +1650,57 @@ export default function OctoPlatformerGame({
         ctx.restore();
       }
 
+      if (p.magnetTimer > 0) {
+        ctx.save();
+        // Glowing magnetic field waves in cyan and electric blue
+        for (let w = 0; w < 3; w++) {
+          const wavePhase = (state.frameCount * 0.08 + w * 0.33) % 1;
+          const radius = 18 + wavePhase * 24;
+          const waveAlpha = Math.max(0, 1 - wavePhase);
+          ctx.strokeStyle = `rgba(6, 182, 212, ${waveAlpha * 0.75})`;
+          ctx.lineWidth = 2.5 - wavePhase * 1.5;
+          ctx.beginPath();
+          ctx.arc(0, -2, radius, -Math.PI * 0.85, Math.PI * 0.85);
+          ctx.stroke();
+
+          ctx.strokeStyle = `rgba(99, 102, 241, ${waveAlpha * 0.5})`;
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.arc(0, -2, radius * 0.85, -Math.PI * 0.6, Math.PI * 0.6);
+          ctx.stroke();
+        }
+
+        // Mini floating horseshoe magnet hovering over Octocat
+        const magBobY = -28 + Math.sin(state.frameCount * 0.12) * 3;
+        ctx.save();
+        ctx.translate(-14, magBobY);
+        ctx.rotate(-0.25 + Math.sin(state.frameCount * 0.08) * 0.1);
+
+        ctx.fillStyle = '#dc2626';
+        ctx.beginPath();
+        ctx.arc(0, 0, 6, Math.PI, 0, false);
+        ctx.lineTo(6, 7);
+        ctx.lineTo(2.5, 7);
+        ctx.lineTo(2.5, 0);
+        ctx.arc(0, 0, 2.5, 0, Math.PI, true);
+        ctx.lineTo(-2.5, 7);
+        ctx.lineTo(-6, 7);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = '#e2e8f0';
+        ctx.fillRect(-6, 4, 3.5, 3);
+        ctx.fillRect(2.5, 4, 3.5, 3);
+
+        ctx.strokeStyle = '#1e293b';
+        ctx.lineWidth = 0.8;
+        ctx.strokeRect(-6, 4, 3.5, 3);
+        ctx.strokeRect(2.5, 4, 3.5, 3);
+
+        ctx.restore();
+        ctx.restore();
+      }
+
       const headY = -8;
 
       ctx.fillStyle = '#181717';
@@ -1643,9 +1847,33 @@ export default function OctoPlatformerGame({
         </div>
       </div>
 
+      {/* Magnet Active Banner with Progress Bar & Countdown Timer */}
+      {isMagnetActive && (
+        <div className="absolute top-3 sm:top-4 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 sm:gap-1.5 z-30 pointer-events-none select-none max-w-[92vw] animate-in fade-in zoom-in-95 duration-200">
+          <div className="bg-gradient-to-r from-cyan-600 via-sky-500 to-indigo-600 text-white font-mono text-[11px] sm:text-xs font-bold px-3 sm:px-4 py-1 sm:py-1.5 rounded-full shadow-lg tracking-wide flex items-center gap-1.5 sm:gap-2 border border-white/30 backdrop-blur-xs whitespace-nowrap">
+            <span className="text-sm leading-none animate-bounce">🧲</span>
+            <span className="hidden sm:inline">MAGNET ACTIVE (FULL SCREEN PULL)</span>
+            <span className="sm:hidden">MAGNET ACTIVE (PULL)</span>
+            <span className="text-white/60">|</span>
+            <span ref={magnetTextRef} className="font-mono font-extrabold text-cyan-200 tabular-nums">
+              12.0s
+            </span>
+          </div>
+
+          {/* Smooth Magnet Progress Bar Track */}
+          <div className="w-48 sm:w-72 h-2 sm:h-2.5 bg-slate-900/50 backdrop-blur-xs rounded-full overflow-hidden p-0.5 border border-white/40 shadow-sm">
+            <div
+              ref={magnetBarRef}
+              className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-sky-400 to-indigo-400 transition-[width] duration-75 ease-linear shadow-xs"
+              style={{ width: '100%' }}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Rainbow Active Banner with Progress Bar & Countdown Timer */}
       {isRainbowActive && (
-        <div className="absolute top-3 sm:top-4 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 sm:gap-1.5 z-30 pointer-events-none select-none max-w-[92vw] animate-in fade-in zoom-in-95 duration-200">
+        <div className={`absolute ${isMagnetActive ? 'top-14 sm:top-16' : 'top-3 sm:top-4'} left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 sm:gap-1.5 z-30 pointer-events-none select-none max-w-[92vw] animate-in fade-in zoom-in-95 duration-200`}>
           <div className="bg-gradient-to-r from-pink-500 via-purple-500 to-amber-500 text-white font-mono text-[11px] sm:text-xs font-bold px-3 sm:px-4 py-1 sm:py-1.5 rounded-full shadow-lg tracking-wide flex items-center gap-1.5 sm:gap-2 border border-white/30 backdrop-blur-xs whitespace-nowrap">
             <span className="text-sm leading-none animate-pulse">✨</span>
             <span className="hidden sm:inline">RAINBOW COMPANION ACTIVE (2X & SHIELD)</span>
