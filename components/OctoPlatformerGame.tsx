@@ -986,7 +986,6 @@ export default function OctoPlatformerGame({
           state.player.y = p.y + p.h;
           state.player.vy = 1.4; // Immediate downward deflection
 
-          playSound('shatter');
           state.score += 25;
           setScore(state.score);
 
