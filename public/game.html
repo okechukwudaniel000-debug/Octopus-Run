@@ -2001,10 +2001,20 @@
           }
 
           if (checkAABB(player, bug)) {
-            if (player.rainbowTimer > 0) {
+            const isLandingOnBug = player.vy > 0 && (
+              (player.y + player.height - player.vy) <= bug.y + 14 ||
+              (player.y + player.height) <= bug.y + 14
+            );
+
+            if (isLandingOnBug || player.rainbowTimer > 0) {
+              // Landing on bug from above kills the bug (not the player!)
               bug.dead = true;
               sounds.playStomp();
-              const pts = 100;
+              if (isLandingOnBug) {
+                player.vy = -8.0;
+                player.jumpCount = 1;
+              }
+              const pts = (player.rainbowTimer > 0) ? 100 : 50;
               addScore(pts, bug.x, bug.y);
 
               for (let i = 0; i < 8; i++) {
@@ -2019,7 +2029,7 @@
                 });
               }
             } else {
-              // Hitting bugs: cancel jump, just blink and vibrate with the sounds
+              // Running into bugs from the side: takes damage, blinks, vibrates, no jump
               triggerDamage();
             }
           }

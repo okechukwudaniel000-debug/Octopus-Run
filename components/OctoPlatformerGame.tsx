@@ -1049,11 +1049,20 @@ export default function OctoPlatformerGame({
           }
 
           if (checkAABB(state.player, bug)) {
-            if (state.player.rainbowTimer > 0) {
-              // Rainbow companion shield obliterates the bug
+            const isLandingOnBug = state.player.vy > 0 && (
+              (state.player.y + state.player.height - state.player.vy) <= bug.y + 14 ||
+              (state.player.y + state.player.height) <= bug.y + 14
+            );
+
+            if (isLandingOnBug || state.player.rainbowTimer > 0) {
+              // Landing on bug from above or rainbow powerup kills the bug (not the player!)
               bug.dead = true;
               playSound('stomp');
-              const pts = 100;
+              if (isLandingOnBug) {
+                state.player.vy = -8.0; // Light upward bounce off the stomped bug
+                state.player.jumpCount = 1; // Allow follow-up double-jump
+              }
+              const pts = state.player.rainbowTimer > 0 ? 100 : 50;
               state.score += pts;
               setScore(state.score);
               state.floatingTexts.push({
@@ -1074,7 +1083,7 @@ export default function OctoPlatformerGame({
                 });
               }
             } else if (state.player.invulnerableTimer <= 0) {
-              // Hitting bug: cancel jump entirely, just blink and vibrate with the sounds
+              // Running into bug from the side: takes damage, blinks, vibrates, no upward jump
               state.lives--;
               setLives(state.lives);
               playSound('damage');
