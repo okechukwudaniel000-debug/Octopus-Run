@@ -131,7 +131,7 @@ export default function OctoPlatformerGame({
     }
   }, []);
 
-  const playSound = useCallback((type: 'jump' | 'collect' | 'rainbow' | 'stomp' | 'damage' | 'gameover', val = 1) => {
+  const playSound = useCallback((type: 'jump' | 'collect' | 'rainbow' | 'stomp' | 'damage' | 'gameover' | 'shatter', val = 1) => {
     if (isMuted) return;
     initAudio();
     const ctx = audioCtxRef.current;
@@ -226,6 +226,18 @@ export default function OctoPlatformerGame({
         osc.start(now + idx * 0.18);
         osc.stop(now + idx * 0.18 + 0.45);
       });
+    } else if (type === 'shatter') {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(260, now);
+      osc.frequency.exponentialRampToValueAtTime(65, now + 0.12);
+      gain.gain.setValueAtTime(0.2, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.12);
     }
   }, [initAudio, isMuted]);
 
@@ -299,12 +311,14 @@ export default function OctoPlatformerGame({
     state.chunkPatternIndex++;
 
     const addP = (gx: number, gy: number, gw: number, gh = 1) => {
-      state.platforms.push({
-        x: gx * TILE_SIZE,
-        y: gy * TILE_SIZE,
-        w: gw * TILE_SIZE,
-        h: gh * TILE_SIZE,
-      });
+      for (let i = 0; i < gw; i++) {
+        state.platforms.push({
+          x: (gx + i) * TILE_SIZE,
+          y: gy * TILE_SIZE,
+          w: TILE_SIZE,
+          h: gh * TILE_SIZE,
+        });
+      }
     };
 
     const addBug = (gx: number, gy: number, rangeW: number) => {
@@ -424,12 +438,14 @@ export default function OctoPlatformerGame({
     const groundGridY = Math.floor(state.groundY / TILE_SIZE);
 
     const addP = (gx: number, gy: number, gw: number, gh = 1) => {
-      state.platforms.push({
-        x: gx * TILE_SIZE,
-        y: gy * TILE_SIZE,
-        w: gw * TILE_SIZE,
-        h: gh * TILE_SIZE,
-      });
+      for (let i = 0; i < gw; i++) {
+        state.platforms.push({
+          x: (gx + i) * TILE_SIZE,
+          y: gy * TILE_SIZE,
+          w: TILE_SIZE,
+          h: gh * TILE_SIZE,
+        });
+      }
     };
 
     const addBug = (gx: number, gy: number, rangeW: number) => {
@@ -934,7 +950,11 @@ export default function OctoPlatformerGame({
         state.player.onGround = false;
 
         // Vertical collision with floating platforms
-        for (const p of state.platforms) {
+        let blockHitFromBelow: { index: number; platform: Platform } | null = null;
+        let minCenterDist = Infinity;
+
+        for (let i = 0; i < state.platforms.length; i++) {
+          const p = state.platforms[i];
           if (checkAABB(state.player, p)) {
             if (state.player.vy > 0 && (state.player.y + state.player.height - state.player.vy) <= p.y + 12) {
               state.player.y = p.y - state.player.height;
@@ -942,9 +962,60 @@ export default function OctoPlatformerGame({
               state.player.onGround = true;
               state.player.jumpCount = 0;
             } else if (state.player.vy < 0) {
-              state.player.y = p.y + p.h;
-              state.player.vy = 0;
+              // Hitting brick from below: player head touches/penetrates bottom of block
+              if (state.player.y < p.y + p.h && state.player.y + state.player.height > p.y + p.h) {
+                const playerCenterX = state.player.x + state.player.width / 2;
+                const blockCenterX = p.x + p.w / 2;
+                const dist = Math.abs(playerCenterX - blockCenterX);
+                if (dist < minCenterDist) {
+                  minCenterDist = dist;
+                  blockHitFromBelow = { index: i, platform: p };
+                }
+              }
             }
+          }
+        }
+
+        if (blockHitFromBelow) {
+          const { index, platform: p } = blockHitFromBelow;
+          // Break that particular block that was touched (not the entire brick row)
+          state.platforms.splice(index, 1);
+
+          // Stop upward momentum and rebound downward:
+          // Player does NOT jump above the brick/block at this particular jump(tap)!
+          state.player.y = p.y + p.h;
+          state.player.vy = 1.4; // Immediate downward deflection
+
+          playSound('shatter');
+          state.score += 25;
+          setScore(state.score);
+
+          state.floatingTexts.push({
+            text: '+25',
+            x: p.x + p.w / 2 - 8,
+            y: p.y - 8,
+            alpha: 1.0,
+          });
+
+          // Kinetic brick debris particles bursting outward and downward
+          for (let b = 0; b < 8; b++) {
+            const angle = -Math.PI / 2 + (Math.random() - 0.5) * 2.2;
+            const speed = 1.8 + Math.random() * 3.5;
+            state.particles.push({
+              x: p.x + p.w / 2,
+              y: p.y + p.h / 2,
+              vx: Math.cos(angle) * speed,
+              vy: Math.sin(angle) * speed + 1.0,
+              color: b % 2 === 0 ? '#64748b' : '#334155',
+              size: 3.5 + Math.random() * 2.5,
+              life: 24,
+              maxLife: 24,
+              shape: 'square',
+              gravity: 0.35,
+              drag: 0.96,
+              rotation: Math.random() * Math.PI,
+              vRot: (Math.random() - 0.5) * 0.4,
+            });
           }
         }
 
