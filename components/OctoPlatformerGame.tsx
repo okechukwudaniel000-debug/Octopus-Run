@@ -1676,9 +1676,9 @@ export default function OctoPlatformerGame({
       {/* HUD Layer */}
       <div className="absolute inset-0 pointer-events-none z-10 flex flex-col justify-between p-3 sm:p-5 md:p-6">
         {/* Top HUD */}
-        <div className="flex justify-between items-center w-full gap-2">
+        <div className="relative flex justify-between items-center w-full gap-2">
           {/* 3 Green Pixel Hearts */}
-          <div className="flex items-center gap-1 sm:gap-1.5 pointer-events-auto shrink-0">
+          <div className="flex items-center gap-1 sm:gap-1.5 pointer-events-auto shrink-0 z-10">
             {[0, 1, 2].map((i) => {
               const active = i < lives;
               return (
@@ -1701,8 +1701,8 @@ export default function OctoPlatformerGame({
             })}
           </div>
 
-          {/* Controls instructions keycaps banner (Desktop only to prevent wrapping on tablet/mobile) */}
-          <div className="hidden lg:flex items-center gap-2 font-mono text-xs text-slate-600 bg-white/80 backdrop-blur-xs px-3 py-1.5 rounded-md border border-slate-300 shadow-xs whitespace-nowrap shrink-0">
+          {/* Controls instructions keycaps banner (Top Center of Screen) */}
+          <div className="hidden md:flex absolute left-1/2 -translate-x-1/2 items-center gap-2 font-mono text-xs text-slate-600 bg-white/85 backdrop-blur-xs px-3.5 py-1.5 rounded-md border border-slate-300 shadow-xs whitespace-nowrap pointer-events-auto z-10">
             <span className="inline-flex items-center justify-center bg-white border border-slate-300 border-b-2 border-b-slate-400 rounded px-1.5 py-0.5 font-bold text-[11px] text-slate-800 min-w-5">
               ←
             </span>
@@ -1714,11 +1714,11 @@ export default function OctoPlatformerGame({
             <span className="inline-flex items-center justify-center bg-white border border-slate-300 border-b-2 border-b-slate-400 rounded px-2 py-0.5 font-bold text-[11px] text-slate-800">
               Space / Tap
             </span>
-            <span className="text-slate-600">jump (2x)</span>
+            <span className="text-slate-800 font-semibold">jump (2x)</span>
           </div>
 
           {/* Score Counter & Controls Bar */}
-          <div className="flex items-center gap-1.5 sm:gap-2.5 md:gap-3 pointer-events-auto shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2.5 md:gap-3 pointer-events-auto shrink-0 z-10">
             {/* Compact High Score indicator on mobile/tablet */}
             <div className="lg:hidden font-mono text-xs font-semibold text-slate-700 bg-white/80 backdrop-blur-xs px-2.5 py-1 rounded border border-slate-300 shadow-xs whitespace-nowrap shrink-0">
               HI: <span className="font-bold text-slate-900">{highScore}</span>
