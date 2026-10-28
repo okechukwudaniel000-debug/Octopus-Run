@@ -1715,7 +1715,7 @@ export default function OctoPlatformerGame({
             <span className="inline-flex items-center justify-center bg-white border border-slate-300 border-b-2 border-b-slate-400 rounded px-2 py-0.5 font-bold text-[11px] text-slate-800">
               Space / Tap
             </span>
-            <span className="text-slate-600">double-jump (2x)</span>
+            <span className="text-slate-600">jump (2x)</span>
           </div>
 
           {/* Score Counter & Controls Bar */}
@@ -1817,7 +1817,7 @@ export default function OctoPlatformerGame({
           <div className="pointer-events-auto">
             <button
               type="button"
-              aria-label="Jump (Double-Jump 2x)"
+              aria-label="Jump (2x)"
               onPointerDown={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
