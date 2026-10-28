@@ -1460,10 +1460,14 @@
         lives--;
         renderHearts();
         sounds.playDamage();
-        screenShake = 16;
-        player.invulnerableTimer = 110;
-        player.vy = -6;
-        player.vx = -player.facing * 4;
+        screenShake = 22; // Screen vibration
+        if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+          try {
+            navigator.vibrate([70, 40, 70]);
+          } catch (_) {}
+        }
+        player.invulnerableTimer = 110; // Blinking invulnerability period
+        // Cancel jump and knockback: no player.vy = -6 or vx knockback
 
         if (lives <= 0) {
           triggerGameOver();
@@ -1931,15 +1935,10 @@
           }
 
           if (checkAABB(player, bug)) {
-            const playerBottomPrev = (player.y + player.height) - player.vy;
-            const isFallingOnTop = player.vy > 0 && playerBottomPrev <= bug.y + 10;
-
-            if (isFallingOnTop || player.rainbowTimer > 0) {
+            if (player.rainbowTimer > 0) {
               bug.dead = true;
               sounds.playStomp();
-              player.vy = JUMP_FORCE * 0.75;
-              player.jumpCount = 1;
-              const pts = (player.rainbowTimer > 0) ? 100 : 50;
+              const pts = 100;
               addScore(pts, bug.x, bug.y);
 
               for (let i = 0; i < 8; i++) {
@@ -1954,6 +1953,7 @@
                 });
               }
             } else {
+              // Hitting bugs: cancel jump, just blink and vibrate with the sounds
               triggerDamage();
             }
           }

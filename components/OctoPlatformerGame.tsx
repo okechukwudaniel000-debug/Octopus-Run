@@ -979,15 +979,11 @@ export default function OctoPlatformerGame({
           }
 
           if (checkAABB(state.player, bug)) {
-            const playerBottomPrev = state.player.y + state.player.height - state.player.vy;
-            const isFallingOnTop = state.player.vy > 0 && playerBottomPrev <= bug.y + 10;
-
-            if (isFallingOnTop || state.player.rainbowTimer > 0) {
+            if (state.player.rainbowTimer > 0) {
+              // Rainbow companion shield obliterates the bug
               bug.dead = true;
               playSound('stomp');
-              state.player.vy = JUMP_FORCE * 0.75;
-              state.player.jumpCount = 1;
-              const pts = state.player.rainbowTimer > 0 ? 100 : 50;
+              const pts = 100;
               state.score += pts;
               setScore(state.score);
               state.floatingTexts.push({
@@ -1008,13 +1004,18 @@ export default function OctoPlatformerGame({
                 });
               }
             } else if (state.player.invulnerableTimer <= 0) {
+              // Hitting bug: cancel jump entirely, just blink and vibrate with the sounds
               state.lives--;
               setLives(state.lives);
               playSound('damage');
-              state.screenShake = 16;
-              state.player.invulnerableTimer = 110;
-              state.player.vy = -6;
-              state.player.vx = -state.player.facing * 4;
+              state.screenShake = 22; // Screen vibration
+              if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+                try {
+                  navigator.vibrate([70, 40, 70]);
+                } catch (_) {}
+              }
+              state.player.invulnerableTimer = 110; // Blinking invulnerability period
+              // Cancel jump and knockback: do not set state.player.vy or knockback state.player.vx
 
               if (state.lives <= 0) {
                 state.isGameOver = true;
