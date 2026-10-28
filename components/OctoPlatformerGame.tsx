@@ -479,8 +479,7 @@ export default function OctoPlatformerGame({
     addP(12, groundGridY - 3, 6);
     addC(14, groundGridY - 3, 'orange');
 
-    // Collectibles right on the ground floor
-    addC(6, groundGridY, 'yellow');
+    // Collectibles right on the ground floor (ahead of spawn point)
     addC(9, groundGridY, 'yellow');
     addBug(18, groundGridY, 7); // First ground bug trap to jump over
     addC(22, groundGridY, 'purple');
