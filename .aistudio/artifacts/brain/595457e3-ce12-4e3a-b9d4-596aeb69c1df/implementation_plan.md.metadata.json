@@ -1,6 +1,6 @@
 {
-  "summary":  "Updated Magnet Power-Up plan to reflect 8 seconds duration (480 frames at 60 FPS) per user request, including HUD countdown timers and state definitions.",
-  "updatedAt":  "2026-10-29T01:26:49.807222961Z",
+  "summary":  "Implementation plan for exporting OctoRun as a standalone mobile app that works completely offline without any data connection. Includes installable PWA with Service Worker pre-caching, single-file downloadable offline bundle, adaptive screen orientation, and top-bar and game-over export/install controls.",
+  "updatedAt":  "2026-10-29T02:10:09.970366997Z",
   "requestFeedback":  true,
   "userFacing":  true
 }
