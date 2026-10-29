@@ -94,7 +94,7 @@ interface GameState {
 ### Verification Plan & Status
 - **Compilation**: `compile_applet` and `lint_applet` passed with zero errors.
 - **Completed Implementation**:
-  1. Magnet spawns in initial world (`gx = 14, gy = groundGridY - 3`) and procedurally generated chunks (patterns 1 & 4).
+  1. Magnet is an infrequent, rare power-up: removed from initial world start (replaced with standard collectible) and balanced to rare probability rolls (~25% in pattern 1, ~15% in pattern 4) so it appears organically once every ~15 chunks (~50–60s of running) rather than every few seconds.
   2. Magnet activation triggers the 8.0s HUD banner with smooth progress bar and digital countdown.
   3. Full-screen magnetic attraction smoothly accelerates all visible colored score blocks into Octocat while Octocat runs and jumps freely.
   4. Glowing cyan/electric blue magnetic field waves and mini floating horseshoe magnet render around Octocat.

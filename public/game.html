@@ -1381,7 +1381,11 @@
           addP(startG + 12, groundGridY - 7, 7);
           addC(startG + 14, groundGridY - 7, 'chick');
           addC(startG + 16, groundGridY - 7, 'blue');
-          addC(startG + 18, groundGridY - 7, 'magnet');
+          if (Math.random() < 0.25) {
+            addC(startG + 18, groundGridY - 7, 'magnet');
+          } else {
+            addC(startG + 18, groundGridY - 7, 'yellow');
+          }
 
           addC(startG + 6, groundGridY, 'quad');
           addBug(startG + 10, groundGridY, 6);
@@ -1411,7 +1415,11 @@
         } else if (pattern === 4) {
           addP(startG + 8, groundGridY - 4, 6);
           addC(startG + 10, groundGridY - 4, 'orange');
-          addC(startG + 13, groundGridY - 4, 'magnet');
+          if (Math.random() < 0.15) {
+            addC(startG + 13, groundGridY - 4, 'magnet');
+          } else {
+            addC(startG + 13, groundGridY - 4, 'purple');
+          }
 
           addC(startG + 3, groundGridY, 'yellow');
           addBug(startG + 5, groundGridY, 5);
@@ -1444,7 +1452,7 @@
         const groundGridY = Math.floor(groundY / TILE_SIZE);
 
         addP(12, groundGridY - 3, 6);
-        addC(14, groundGridY - 3, 'magnet');
+        addC(14, groundGridY - 3, 'blue');
 
         // Collectibles right on the ground floor (ahead of spawn point)
         addC(9, groundGridY, 'yellow');

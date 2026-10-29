@@ -395,7 +395,11 @@ export default function OctoPlatformerGame({
       // Ground runway with gems and a ground bug
       addC(startG + 6, groundGridY, 'quad');
       addBug(startG + 10, groundGridY, 6);
-      addC(startG + 18, groundGridY, 'magnet'); // Horseshoe magnet power-up!
+      if (Math.random() < 0.25) {
+        addC(startG + 18, groundGridY, 'magnet'); // Rare horseshoe magnet power-up (~25% in pattern 1)
+      } else {
+        addC(startG + 18, groundGridY, 'yellow');
+      }
       state.maxGeneratedX = (startG + 25) * TILE_SIZE;
     } else if (pattern === 2) {
       // Stepping stone high path with ground continuously walkable underneath
@@ -425,7 +429,11 @@ export default function OctoPlatformerGame({
     } else if (pattern === 4) {
       // Wide open ground run with alternating bugs and items
       addP(startG + 8, groundGridY - 4, 6);
-      addC(startG + 10, groundGridY - 4, 'magnet'); // Horseshoe magnet power-up!
+      if (Math.random() < 0.15) {
+        addC(startG + 10, groundGridY - 4, 'magnet'); // Rare horseshoe magnet power-up (~15% in pattern 4)
+      } else {
+        addC(startG + 10, groundGridY - 4, 'orange');
+      }
 
       addC(startG + 3, groundGridY, 'yellow');
       addBug(startG + 5, groundGridY, 5);
@@ -499,7 +507,7 @@ export default function OctoPlatformerGame({
 
     // Initial floating practice tier
     addP(12, groundGridY - 3, 6);
-    addC(14, groundGridY - 3, 'magnet'); // Horseshoe magnet pickup on first floating platform!
+    addC(14, groundGridY - 3, 'blue');
 
     // Collectibles right on the ground floor (ahead of spawn point)
     addC(9, groundGridY, 'yellow');
