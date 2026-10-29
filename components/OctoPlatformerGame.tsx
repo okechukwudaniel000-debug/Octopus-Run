@@ -68,7 +68,7 @@ const MOVE_SPEED = 3.6;   // Relative forward player adjust speed
 const MOVE_SPEED_BACKWARD = 5.8; // Fast, responsive backward retreat speed against auto-scroll
 const MAX_JUMPS = 2;      // Allow jumping up to 2 times before hitting ground (double-jump / 2x)
 const RAINBOW_DURATION = 60 * 15; // 15 seconds at 60 FPS
-const MAGNET_DURATION = 60 * 12;  // 12 seconds at 60 FPS (user confirmed)
+const MAGNET_DURATION = 60 * 8;   // 8 seconds at 60 FPS
 
 export default function OctoPlatformerGame({
   onOpenCodeViewer,
@@ -1215,7 +1215,7 @@ export default function OctoPlatformerGame({
               state.player.magnetTimer = MAGNET_DURATION;
               setIsMagnetActive(true);
               if (magnetBarRef.current) magnetBarRef.current.style.width = '100%';
-              if (magnetTextRef.current) magnetTextRef.current.textContent = '12.0s';
+              if (magnetTextRef.current) magnetTextRef.current.textContent = '8.0s';
               playSound('magnet');
               spawnCollectSparks(c.x, c.baseY, 'magnet');
               state.score += 100;
@@ -1856,7 +1856,7 @@ export default function OctoPlatformerGame({
             <span className="sm:hidden">MAGNET ACTIVE (PULL)</span>
             <span className="text-white/60">|</span>
             <span ref={magnetTextRef} className="font-mono font-extrabold text-cyan-200 tabular-nums">
-              12.0s
+              8.0s
             </span>
           </div>
 

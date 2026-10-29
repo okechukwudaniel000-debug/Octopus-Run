@@ -1,6 +1,6 @@
 {
-  "summary":  "Implementation plan for the Magnet Power-Up in OctoRun, featuring full-screen attraction of all score blocks, horseshoe magnet pixel art, glowing magnetic field waves, a 12-second HUD timer and progress bar, and Web Audio API sound effects across both the Next.js app and standalone HTML game.",
-  "updatedAt":  "2026-10-28T02:25:20.444639440Z",
+  "summary":  "Updated Magnet Power-Up plan to reflect 8 seconds duration (480 frames at 60 FPS) per user request, including HUD countdown timers and state definitions.",
+  "updatedAt":  "2026-10-29T01:26:49.807222961Z",
   "requestFeedback":  true,
   "userFacing":  true
 }
