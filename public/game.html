@@ -514,6 +514,73 @@
       transition: width 0.08s linear;
     }
 
+    /* Active Magnet Power-up Banner */
+    .magnet-banner {
+      position: absolute;
+      top: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      opacity: 0;
+      transition: opacity 0.2s ease, top 0.2s ease;
+      letter-spacing: 0.5px;
+      pointer-events: none;
+      z-index: 28;
+    }
+
+    .magnet-banner.active {
+      opacity: 1;
+    }
+
+    .magnet-banner-content {
+      background: linear-gradient(90deg, #0891b2, #0ea5e9, #6366f1);
+      color: white;
+      font-family: ui-monospace, SFMono-Regular, monospace;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 14px;
+      border-radius: 20px;
+      box-shadow: 0 4px 12px rgba(6, 182, 212, 0.28);
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .magnet-banner-content .magnet-icon {
+      font-size: 13px;
+      line-height: 1;
+      display: inline-block;
+      animation: bounce 1s infinite;
+    }
+
+    .magnet-timer-digits {
+      font-weight: 800;
+      color: #a5f3fc;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .magnet-progress-track {
+      width: 240px;
+      height: 8px;
+      background: rgba(15, 23, 42, 0.5);
+      border-radius: 10px;
+      padding: 1.5px;
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+      overflow: hidden;
+    }
+
+    .magnet-progress-fill {
+      height: 100%;
+      border-radius: 8px;
+      background: linear-gradient(90deg, #22d3ee, #38bdf8, #818cf8);
+      transition: width 0.08s linear;
+    }
+
     /* Screen Edge Hold Indicators */
     .edge-indicator {
       position: absolute;
@@ -591,6 +658,19 @@
       <div class="edge-badge">
         <span>HOLD TO RUN</span>
         <span style="font-size:14px; line-height:1;">▶</span>
+      </div>
+    </div>
+
+    <!-- Active Magnet Power-up Banner with Progress Bar & Countdown -->
+    <div id="magnet-banner" class="magnet-banner">
+      <div class="magnet-banner-content">
+        <span class="magnet-icon">🧲</span>
+        <span>MAGNET ACTIVE (FULL SCREEN PULL)</span>
+        <span class="rainbow-sep">|</span>
+        <span id="magnet-timer-val" class="magnet-timer-digits">12.0s</span>
+      </div>
+      <div class="magnet-progress-track">
+        <div id="magnet-progress-fill" class="magnet-progress-fill" style="width: 100%;"></div>
       </div>
     </div>
 
@@ -814,6 +894,31 @@
           });
         }
 
+        playMagnet() {
+          if (this.muted) return;
+          this.init();
+          if (!this.ctx) return;
+
+          const now = this.ctx.currentTime;
+          const magneticFrequencies = [293.66, 440.00, 587.33, 880.00, 1174.66];
+          magneticFrequencies.forEach((freq, idx) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, now + idx * 0.04);
+
+            gain.gain.setValueAtTime(0.12, now + idx * 0.04);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.04 + 0.28);
+
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+
+            osc.start(now + idx * 0.04);
+            osc.stop(now + idx * 0.04 + 0.3);
+          });
+        }
+
         playStomp() {
           if (this.muted) return;
           this.init();
@@ -917,6 +1022,7 @@
       const MAX_LIVES = 3;
       const MAX_JUMPS = 2;      // Allow jumping up to 2 times before hitting ground (double-jump / 2x)
       const RAINBOW_DURATION = 60 * 15; // 15 seconds at 60 FPS
+      const MAGNET_DURATION = 60 * 12;  // 12 seconds at 60 FPS
 
       // --- DOM REFERENCES ---
       const canvas = document.getElementById('gameCanvas');
@@ -934,6 +1040,9 @@
       const rainbowBanner = document.getElementById('rainbow-banner');
       const rainbowTimerVal = document.getElementById('rainbow-timer-val');
       const rainbowProgressFill = document.getElementById('rainbow-progress-fill');
+      const magnetBanner = document.getElementById('magnet-banner');
+      const magnetTimerVal = document.getElementById('magnet-timer-val');
+      const magnetProgressFill = document.getElementById('magnet-progress-fill');
 
       function updateSoundIcon() {
         if (sounds.muted) {
@@ -1200,6 +1309,7 @@
         invulnerableTimer: 0,
         walkFrame: 0,
         rainbowTimer: 0,
+        magnetTimer: 0,
         companion: {
           x: 130,
           y: 394,
@@ -1271,6 +1381,7 @@
           addP(startG + 12, groundGridY - 7, 7);
           addC(startG + 14, groundGridY - 7, 'chick');
           addC(startG + 16, groundGridY - 7, 'blue');
+          addC(startG + 18, groundGridY - 7, 'magnet');
 
           addC(startG + 6, groundGridY, 'quad');
           addBug(startG + 10, groundGridY, 6);
@@ -1300,6 +1411,7 @@
         } else if (pattern === 4) {
           addP(startG + 8, groundGridY - 4, 6);
           addC(startG + 10, groundGridY - 4, 'orange');
+          addC(startG + 13, groundGridY - 4, 'magnet');
 
           addC(startG + 3, groundGridY, 'yellow');
           addBug(startG + 5, groundGridY, 5);
@@ -1332,7 +1444,7 @@
         const groundGridY = Math.floor(groundY / TILE_SIZE);
 
         addP(12, groundGridY - 3, 6);
-        addC(14, groundGridY - 3, 'orange');
+        addC(14, groundGridY - 3, 'magnet');
 
         // Collectibles right on the ground floor (ahead of spawn point)
         addC(9, groundGridY, 'yellow');
@@ -1363,8 +1475,10 @@
         player.jumpCount = 0;
         player.invulnerableTimer = 90;
         player.rainbowTimer = 0;
+        player.magnetTimer = 0;
         player.companion.active = false;
         rainbowBanner.classList.remove('active');
+        if (magnetBanner) magnetBanner.classList.remove('active');
         camera.x = 0;
         camera.y = 0;
       }
@@ -1400,9 +1514,11 @@
           palette = ['#facc15', '#fbbf24', '#f97316', '#ffffff', '#fef08a'];
         } else if (type === 'rainbow') {
           palette = ['#ec4899', '#8b5cf6', '#3b82f6', '#10b981', '#f59e0b', '#ffffff'];
+        } else if (type === 'magnet') {
+          palette = ['#06b6d4', '#38bdf8', '#818cf8', '#dc2626', '#ffffff'];
         }
 
-        const count = type === 'rainbow' ? 24 : (type === 'chick' || type === 'quad') ? 18 : 12;
+        const count = (type === 'rainbow' || type === 'magnet') ? 24 : (type === 'chick' || type === 'quad') ? 18 : 12;
 
         for (let i = 0; i < count; i++) {
           const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.45;
@@ -1552,6 +1668,57 @@
           ctx.beginPath();
           ctx.arc(0, -4, 22, 0, Math.PI * 2);
           ctx.stroke();
+          ctx.restore();
+        }
+
+        if (p.magnetTimer > 0) {
+          ctx.save();
+          // Glowing magnetic field waves in cyan and electric blue
+          for (let w = 0; w < 3; w++) {
+            const wavePhase = (frameCount * 0.08 + w * 0.33) % 1;
+            const radius = 18 + wavePhase * 24;
+            const waveAlpha = Math.max(0, 1 - wavePhase);
+            ctx.strokeStyle = `rgba(6, 182, 212, ${waveAlpha * 0.75})`;
+            ctx.lineWidth = 2.5 - wavePhase * 1.5;
+            ctx.beginPath();
+            ctx.arc(0, -2, radius, -Math.PI * 0.85, Math.PI * 0.85);
+            ctx.stroke();
+
+            ctx.strokeStyle = `rgba(99, 102, 241, ${waveAlpha * 0.5})`;
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(0, -2, radius * 0.85, -Math.PI * 0.6, Math.PI * 0.6);
+            ctx.stroke();
+          }
+
+          // Mini floating horseshoe magnet hovering over Octocat
+          const magBobY = -28 + Math.sin(frameCount * 0.12) * 3;
+          ctx.save();
+          ctx.translate(-14, magBobY);
+          ctx.rotate(-0.25 + Math.sin(frameCount * 0.08) * 0.1);
+
+          ctx.fillStyle = '#dc2626';
+          ctx.beginPath();
+          ctx.arc(0, 0, 6, Math.PI, 0, false);
+          ctx.lineTo(6, 7);
+          ctx.lineTo(2.5, 7);
+          ctx.lineTo(2.5, 0);
+          ctx.arc(0, 0, 2.5, 0, Math.PI, true);
+          ctx.lineTo(-2.5, 7);
+          ctx.lineTo(-6, 7);
+          ctx.closePath();
+          ctx.fill();
+
+          ctx.fillStyle = '#e2e8f0';
+          ctx.fillRect(-6, 4, 3.5, 3);
+          ctx.fillRect(2.5, 4, 3.5, 3);
+
+          ctx.strokeStyle = '#1e293b';
+          ctx.lineWidth = 0.8;
+          ctx.strokeRect(-6, 4, 3.5, 3);
+          ctx.strokeRect(2.5, 4, 3.5, 3);
+
+          ctx.restore();
           ctx.restore();
         }
 
@@ -1744,6 +1911,51 @@
           ctx.strokeStyle = '#ffffff';
           ctx.lineWidth = 1.5;
           ctx.strokeRect(0, 0, 18, 16);
+        } else if (c.type === 'magnet') {
+          // Horseshoe Magnet Pickup Item
+          ctx.save();
+          const auraPulse = Math.sin(frameCount * 0.12 + c.bobOffset) * 0.2 + 0.8;
+          ctx.shadowColor = '#06b6d4';
+          ctx.shadowBlur = 8 * auraPulse;
+
+          // Red U-shaped body
+          ctx.fillStyle = '#dc2626';
+          ctx.beginPath();
+          ctx.arc(8, 7, 7, Math.PI, 0, false);
+          ctx.lineTo(15, 15);
+          ctx.lineTo(10.5, 15);
+          ctx.lineTo(10.5, 7.5);
+          ctx.arc(8, 7, 2.5, 0, Math.PI, true);
+          ctx.lineTo(5.5, 15);
+          ctx.lineTo(1, 15);
+          ctx.closePath();
+          ctx.fill();
+
+          ctx.shadowBlur = 0;
+
+          // Silver/metallic tips
+          ctx.fillStyle = '#f1f5f9';
+          ctx.fillRect(1, 11, 4.5, 4);
+          ctx.fillRect(10.5, 11, 4.5, 4);
+
+          // Specular highlights
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(2, 12, 2.5, 1.5);
+          ctx.fillRect(11.5, 12, 2.5, 1.5);
+
+          ctx.strokeStyle = '#1e293b';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(1, 11, 4.5, 4);
+          ctx.strokeRect(10.5, 11, 4.5, 4);
+
+          // Magnetic spark arc between poles
+          ctx.strokeStyle = '#38bdf8';
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          ctx.arc(8, 13, 3 + Math.sin(frameCount * 0.15) * 1.5, 0, Math.PI);
+          ctx.stroke();
+
+          ctx.restore();
         } else if (c.type === 'quad') {
           const sz = 8;
           ctx.fillStyle = '#ef4444'; ctx.fillRect(0, 0, sz, sz);
@@ -1845,6 +2057,76 @@
                 color: hues[Math.floor(Math.random() * hues.length)],
                 size: 3 + Math.random() * 3,
                 life: 30
+              });
+            }
+          }
+        }
+
+        if (player.magnetTimer > 0) {
+          player.magnetTimer--;
+          const pct = Math.max(0, (player.magnetTimer / MAGNET_DURATION) * 100);
+          const remainingSec = (player.magnetTimer / 60).toFixed(1);
+
+          if (magnetProgressFill) {
+            magnetProgressFill.style.width = `${pct}%`;
+          }
+          if (magnetTimerVal) {
+            magnetTimerVal.textContent = `${remainingSec}s`;
+          }
+
+          if (player.magnetTimer <= 0) {
+            magnetBanner.classList.remove('active');
+          } else {
+            // Magnetic attraction physics: attract all visible score blocks across the full screen towards Octocat!
+            const playerCenterX = player.x + player.width / 2;
+            const playerCenterY = player.y + player.height / 2;
+            const screenLeft = camera.x - 40;
+            const screenRight = camera.x + canvas.width + 120;
+
+            for (const c of collectibles) {
+              if (c.collected || c.type === 'magnet') continue;
+              if (c.x >= screenLeft && c.x <= screenRight) {
+                const dx = playerCenterX - (c.x + c.width / 2);
+                const dy = playerCenterY - (c.baseY + c.height / 2);
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist > 3) {
+                  // Strong, progressive acceleration pulling towards Octocat
+                  const pullSpeed = Math.min(14, Math.max(5.5, 12 - (dist / canvas.width) * 4));
+                  const nx = dx / dist;
+                  const ny = dy / dist;
+                  c.vx = (c.vx || 0) * 0.88 + nx * pullSpeed;
+                  c.vy = (c.vy || 0) * 0.88 + ny * pullSpeed;
+                  c.x += c.vx;
+                  c.baseY += c.vy;
+
+                  // Magnetic flux trail particles towards Octocat
+                  if (frameCount % 5 === 0 && Math.random() < 0.4) {
+                    particles.push({
+                      x: c.x + c.width / 2,
+                      y: c.baseY + c.height / 2,
+                      vx: nx * 3 + (Math.random() - 0.5) * 1.5,
+                      vy: ny * 3 + (Math.random() - 0.5) * 1.5,
+                      color: Math.random() < 0.5 ? '#38bdf8' : '#818cf8',
+                      size: 2.5,
+                      life: 14
+                    });
+                  }
+                }
+              }
+            }
+
+            // Magnetic field sparkle pulses around player
+            if (frameCount % 4 === 0) {
+              const angle = Math.random() * Math.PI * 2;
+              const radius = 22 + Math.random() * 26;
+              particles.push({
+                x: playerCenterX + Math.cos(angle) * radius,
+                y: playerCenterY + Math.sin(angle) * radius,
+                vx: -Math.cos(angle) * 1.8,
+                vy: -Math.sin(angle) * 1.8,
+                color: Math.random() < 0.6 ? '#06b6d4' : '#6366f1',
+                size: 2.2,
+                life: 18
               });
             }
           }
@@ -2050,7 +2332,21 @@
           if (checkAABB(player, { x: c.x, y: c.baseY, w: c.width, h: c.height })) {
             c.collected = true;
 
-            if (c.type === 'rainbow') {
+            if (c.type === 'magnet') {
+              player.magnetTimer = MAGNET_DURATION;
+              magnetBanner.classList.add('active');
+              if (magnetProgressFill) magnetProgressFill.style.width = '100%';
+              if (magnetTimerVal) magnetTimerVal.textContent = '12.0s';
+              sounds.playMagnet();
+              spawnCollectSparks(c.x, c.baseY, 'magnet');
+              addScore(100, c.x, c.y);
+              floatingTexts.push({
+                text: '🧲 MAGNET!',
+                x: c.x,
+                y: c.y - 12,
+                alpha: 1.0
+              });
+            } else if (c.type === 'rainbow') {
               player.rainbowTimer = RAINBOW_DURATION;
               player.companion.active = true;
               player.companion.x = player.x - 30;

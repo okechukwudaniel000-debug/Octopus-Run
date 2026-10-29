@@ -1,6 +1,6 @@
 {
   "name": "OctoRun - 2D Grid Platformer",
-  "description": "A minimalist grid-based 2D platformer web game featuring the Octocat character, physics, collectibles, crawling bug enemies, rainbow companion power-ups, and Web Audio API sounds.",
+  "description": "A minimalist grid-based 2D platformer web game featuring the Octocat character, physics, score block collectibles, full-screen magnet power-ups, crawling bug enemies, rainbow companion shield, and Web Audio API sounds.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
