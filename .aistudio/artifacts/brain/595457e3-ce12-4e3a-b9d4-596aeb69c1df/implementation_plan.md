@@ -101,10 +101,16 @@ Export *OctoRun* as a standalone, zero-data-connection mobile application featur
 
 ---
 
-## 5. Verification Plan
+## 5. Verification Plan & Status
 
-- **PWA Manifest Validation**: Verify `app/manifest.ts` returns valid JSON with all required fields (name, short_name, icons, display, start_url).
-- **Offline Simulation**: Test Service Worker cache-first retrieval by disabling network in browser DevTools and verifying full gameplay, physics, sound, and score caching.
-- **Standalone Mode Behavior**: Verify install prompt triggers correctly and suppresses once installed.
-- **Export Verification**: Verify clicking "Export Offline Game" downloads a working, standalone `.html` file that runs in any browser with zero network access.
-- **Build Quality**: Run `lint_applet` and `compile_applet` to ensure zero compilation or type errors.
+- **Status**: Completed and fully verified.
+- **PWA Manifest Validated**: `app/manifest.ts` configured with `display: 'standalone'`, `orientation: 'any'`, `id: '/'`, `short_name: 'OctoRun'`, and complete PNG/SVG icons.
+- **Offline Service Worker (`public/sw.js`)**: Implemented with cache-first strategy, pre-caching all shell assets, canvas renderers, synthesizers, and offline fallbacks.
+- **Standalone Mobile Icons**: Generated `pwa-192x192.png`, `pwa-512x512.png`, `apple-touch-icon.png`, and `pwa-maskable-512x512.png`.
+- **In-Game Export & Install**:
+  - Top HUD bar: Integrated "Export" (.html download) and "Install" (PWA install prompt, auto-hides when installed).
+  - Game Over Overlay: Added standalone offline app strip with "Install App" and "Export .html" buttons.
+  - Guided iOS Safari home-screen installation modal.
+  - Non-intrusive offline connectivity status pill.
+- **Dual-Engine Parity**: Synced across Next.js React engine (`components/OctoPlatformerGame.tsx`) and single-file standalone web game (`public/game.html`).
+- **Code Quality**: `lint_applet` passed with zero errors/warnings; `compile_applet` built successfully.

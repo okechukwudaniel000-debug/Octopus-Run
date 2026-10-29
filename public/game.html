@@ -2,8 +2,16 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>OctoRun - 2D Grid Platformer</title>
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="#181717">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="OctoRun">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="icon" type="image/svg+xml" href="/icon.svg">
   <style>
     * {
       box-sizing: border-box;
@@ -384,6 +392,146 @@
       background: #f6f8fa;
       border-color: #8c959f;
       transform: translateY(-1px);
+    }
+
+    .hud-export-btn, .hud-install-btn {
+      background: #ffffff;
+      border: 1px solid #d0d7de;
+      border-radius: 6px;
+      padding: 4px 9px;
+      height: 32px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+      color: #24292f;
+      font-family: ui-monospace, SFMono-Regular, monospace;
+      font-size: 11px;
+      font-weight: 600;
+      transition: all 0.15s ease;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+      white-space: nowrap;
+    }
+
+    .hud-install-btn {
+      background: #4f46e5;
+      border-color: #4338ca;
+      color: #ffffff;
+    }
+
+    .hud-install-btn:hover {
+      background: #4338ca;
+    }
+
+    .hud-export-btn:hover {
+      background: #f3f4f6;
+      border-color: #8c959f;
+    }
+
+    .offline-export-card {
+      width: 100%;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 12px;
+      margin-top: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      text-align: left;
+    }
+
+    .offline-export-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .offline-export-title {
+      font-family: ui-monospace, SFMono-Regular, monospace;
+      font-size: 11px;
+      font-weight: 700;
+      color: #1e293b;
+    }
+
+    .offline-badge {
+      font-family: ui-monospace, SFMono-Regular, monospace;
+      font-size: 9px;
+      font-weight: 700;
+      background: #dcfce7;
+      color: #15803d;
+      border: 1px solid #bbf7d0;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    .offline-desc {
+      font-size: 11px;
+      color: #64748b;
+      line-height: 1.3;
+      margin-bottom: 4px;
+    }
+
+    .offline-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-install-pwa, .btn-export-offline {
+      flex: 1;
+      padding: 7px 10px;
+      border-radius: 8px;
+      font-family: ui-monospace, SFMono-Regular, monospace;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+
+    .btn-install-pwa {
+      background: #4f46e5;
+      color: white;
+      border: 1px solid #4338ca;
+    }
+
+    .btn-install-pwa:hover {
+      background: #4338ca;
+    }
+
+    .btn-export-offline {
+      background: white;
+      color: #1e293b;
+      border: 1px solid #cbd5e1;
+    }
+
+    .btn-export-offline:hover {
+      background: #f1f5f9;
+      border-color: #94a3b8;
+    }
+
+    .offline-status-pill {
+      display: none;
+      position: fixed;
+      top: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #f59e0b;
+      color: white;
+      font-family: ui-monospace, SFMono-Regular, monospace;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 12px;
+      border-radius: 20px;
+      box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+      z-index: 50;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .offline-status-pill.active {
+      display: flex;
     }
 
     /* On-Screen Mobile & Tablet Touch Controls */
@@ -773,6 +921,21 @@
         <div class="hud-score-panel">
           <div class="hud-mobile-hi">HI: <span id="hud-mobile-hi-val">0</span></div>
           <div class="score-display">Your score: <span id="hud-score">0</span></div>
+          <button id="top-export-btn" class="hud-export-btn" title="Export Standalone Offline Game (.html)" aria-label="Export Offline Game">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            <span id="export-label">Export</span>
+          </button>
+          <button id="top-install-btn" class="hud-install-btn" title="Install Standalone App" aria-label="Install App" style="display:none;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+              <line x1="12" y1="18" x2="12.01" y2="18"></line>
+            </svg>
+            <span>Install</span>
+          </button>
           <button id="sound-btn" class="sound-toggle-btn" title="Toggle Sound" aria-label="Toggle Sound">
             <svg id="sound-icon-on" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
@@ -798,6 +961,12 @@
 
         <button id="exit-btn" class="btn-exit">Exit game</button>
       </div>
+    </div>
+
+    <!-- Offline status notification pill -->
+    <div id="offline-status-pill" class="offline-status-pill">
+      <span>⚡</span>
+      <span>Offline Mode (Cached)</span>
     </div>
 
     <!-- On-Screen Mobile & Tablet Touch Controller Dock -->
@@ -845,6 +1014,19 @@
 
         <div id="game-over-badge" class="game-over-badge">
           <span id="game-over-badge-text">★ NEW HIGH SCORE! ★</span>
+        </div>
+
+        <!-- Standalone Mobile / Offline Export Box -->
+        <div class="offline-export-card">
+          <div class="offline-export-header">
+            <span class="offline-export-title">📱 STANDALONE OFFLINE APP</span>
+            <span class="offline-badge">NO DATA NEEDED</span>
+          </div>
+          <p class="offline-desc">Play on mobile or desktop without an active internet connection.</p>
+          <div class="offline-actions">
+            <button id="modal-install-btn" class="btn-install-pwa" style="display:none;">Install App</button>
+            <button id="modal-export-btn" class="btn-export-offline">Export .html</button>
+          </div>
         </div>
       </div>
 
@@ -2736,7 +2918,82 @@
         render();
         requestAnimationFrame(gameLoop);
       }
-      requestAnimationFrame(gameLoop);
+      // --- STANDALONE OFFLINE EXPORT & PWA INSTALL ENGINE ---
+      const topExportBtn = document.getElementById('top-export-btn');
+      const modalExportBtn = document.getElementById('modal-export-btn');
+      const topInstallBtn = document.getElementById('top-install-btn');
+      const modalInstallBtn = document.getElementById('modal-install-btn');
+      const offlineStatusPill = document.getElementById('offline-status-pill');
+      const exportLabel = document.getElementById('export-label');
+
+      function exportStandalonePackage() {
+        try {
+          const htmlContent = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+          const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'OctoRun-Offline.html';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+
+          if (exportLabel) exportLabel.textContent = 'Saved!';
+          if (modalExportBtn) modalExportBtn.textContent = 'Saved!';
+          setTimeout(() => {
+            if (exportLabel) exportLabel.textContent = 'Export';
+            if (modalExportBtn) modalExportBtn.textContent = 'Export .html';
+          }, 3000);
+        } catch (e) {
+          console.error('Offline export error:', e);
+        }
+      }
+
+      if (topExportBtn) topExportBtn.addEventListener('click', exportStandalonePackage);
+      if (modalExportBtn) modalExportBtn.addEventListener('click', exportStandalonePackage);
+
+      // PWA Install Prompt handling
+      let pwaPrompt = null;
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        pwaPrompt = e;
+        if (topInstallBtn) topInstallBtn.style.display = 'inline-flex';
+        if (modalInstallBtn) modalInstallBtn.style.display = 'block';
+      });
+
+      function triggerPWAInstall() {
+        if (!pwaPrompt) return;
+        pwaPrompt.prompt();
+        pwaPrompt.userChoice.then((choice) => {
+          if (choice.outcome === 'accepted') {
+            if (topInstallBtn) topInstallBtn.style.display = 'none';
+            if (modalInstallBtn) modalInstallBtn.style.display = 'none';
+          }
+          pwaPrompt = null;
+        });
+      }
+
+      if (topInstallBtn) topInstallBtn.addEventListener('click', triggerPWAInstall);
+      if (modalInstallBtn) modalInstallBtn.addEventListener('click', triggerPWAInstall);
+
+      // Online/Offline status tracking
+      function updateOnlineStatus() {
+        if (offlineStatusPill) {
+          if (!navigator.onLine) offlineStatusPill.classList.add('active');
+          else offlineStatusPill.classList.remove('active');
+        }
+      }
+      window.addEventListener('online', updateOnlineStatus);
+      window.addEventListener('offline', updateOnlineStatus);
+      updateOnlineStatus();
+
+      // Register Offline Service Worker
+      if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch(() => {});
+        });
+      }
 
     })();
   </script>

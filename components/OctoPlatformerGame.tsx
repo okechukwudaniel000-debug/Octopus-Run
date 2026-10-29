@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Volume2, VolumeX, Maximize2, Minimize2, RefreshCw, Trophy } from 'lucide-react';
+import { Volume2, VolumeX, Maximize2, Minimize2, RefreshCw, Trophy, Download, Smartphone, Share2, WifiOff, Check, X, FileCode } from 'lucide-react';
+import { usePWAInstall } from './usePWAInstall';
 
 interface FloatingText {
   text: string;
@@ -113,6 +114,16 @@ export default function OctoPlatformerGame({
   const [holdingLeft, setHoldingLeft] = useState<boolean>(false);
   const [holdingRight, setHoldingRight] = useState<boolean>(false);
   const activePointersRef = useRef<Map<number, { zone: 'left' | 'right' | 'center' }>>(new Map());
+  const {
+    isInstalled,
+    isIOS,
+    isOnline,
+    isExporting,
+    exportSuccess,
+    install,
+    exportOfflineHtml,
+  } = usePWAInstall();
+  const [showIOSModal, setShowIOSModal] = useState<boolean>(false);
 
   // Responsive touch & screen size detection for mobile & tablet
   useEffect(() => {
@@ -1988,6 +1999,55 @@ export default function OctoPlatformerGame({
               <span className="font-bold">{score}</span>
             </div>
 
+            {/* Export Offline Game (.html) Button */}
+            <button
+              onClick={exportOfflineHtml}
+              disabled={isExporting}
+              title="Export standalone offline game (.html) - No internet needed"
+              aria-label="Export offline game"
+              className="bg-white border border-slate-300 hover:border-slate-400 active:bg-slate-100 rounded-md px-2 sm:px-2.5 py-1.5 text-slate-800 shadow-xs transition-colors shrink-0 flex items-center gap-1.5 font-mono text-xs font-semibold"
+            >
+              {exportSuccess ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-emerald-600" />
+                  <span className="hidden sm:inline text-emerald-700">Exported</span>
+                </>
+              ) : (
+                <>
+                  <Download className={`w-3.5 h-3.5 ${isExporting ? 'animate-bounce text-indigo-600' : 'text-slate-600'}`} />
+                  <span className="hidden sm:inline">Export</span>
+                </>
+              )}
+            </button>
+
+            {/* Install App Button (Hidden when running as standalone PWA) */}
+            {!isInstalled && (
+              <button
+                onClick={() => {
+                  if (isIOS) setShowIOSModal(true);
+                  else install();
+                }}
+                title="Install standalone mobile app (offline play)"
+                aria-label="Install standalone mobile app"
+                className="bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white rounded-md px-2.5 py-1.5 shadow-xs transition-colors shrink-0 flex items-center gap-1.5 font-mono text-xs font-semibold"
+              >
+                <Smartphone className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Install</span>
+              </button>
+            )}
+
+            {/* View Standalone Source Button */}
+            {onOpenCodeViewer && (
+              <button
+                onClick={onOpenCodeViewer}
+                title="View Standalone Game Source"
+                aria-label="View Standalone Game Source"
+                className="bg-white border border-slate-300 hover:border-slate-400 active:bg-slate-100 rounded-md p-1.5 text-slate-800 shadow-xs transition-colors shrink-0"
+              >
+                <FileCode className="w-4 h-4 text-slate-600" />
+              </button>
+            )}
+
             {/* Mute Button */}
             <button
               onClick={toggleSound}
@@ -2164,6 +2224,55 @@ export default function OctoPlatformerGame({
                 )}
               </div>
             )}
+
+            {/* Standalone Mobile / Offline Export Box */}
+            <div className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 mt-3 flex flex-col gap-2 text-left">
+              <div className="flex items-center justify-between">
+                <span className="font-mono text-[11px] font-bold text-slate-800 flex items-center gap-1.5">
+                  <Smartphone className="w-3.5 h-3.5 text-indigo-600" />
+                  STANDALONE OFFLINE APP
+                </span>
+                <span className="text-[10px] font-mono text-emerald-700 font-semibold bg-emerald-100/70 border border-emerald-300 px-1.5 py-0.5 rounded">
+                  NO DATA NEEDED
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 font-sans leading-tight">
+                Play on mobile or desktop without an active internet connection.
+              </p>
+              <div className="flex gap-2 pt-1">
+                {!isInstalled && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (isIOS) setShowIOSModal(true);
+                      else install();
+                    }}
+                    className="flex-1 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-mono text-xs font-semibold py-2 px-2.5 rounded-lg shadow-xs transition-colors flex items-center justify-center gap-1.5"
+                  >
+                    <Smartphone className="w-3.5 h-3.5" />
+                    <span>Install App</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={exportOfflineHtml}
+                  disabled={isExporting}
+                  className="flex-1 bg-white border border-slate-300 hover:border-slate-400 active:bg-slate-100 text-slate-800 font-mono text-xs font-semibold py-2 px-2.5 rounded-lg shadow-xs transition-colors flex items-center justify-center gap-1.5"
+                >
+                  {exportSuccess ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-emerald-600" />
+                      <span className="text-emerald-700">Exported!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Download className="w-3.5 h-3.5 text-slate-600" />
+                      <span>Export .html</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
 
           <h2 className="font-mono text-3xl sm:text-5xl font-black text-slate-700 tracking-[0.2em] sm:tracking-[0.3em] uppercase mb-6 drop-shadow-xs select-none">
@@ -2182,6 +2291,55 @@ export default function OctoPlatformerGame({
               <span>Play again</span>
             </button>
           </div>
+        </div>
+      )}
+
+      {/* iOS Safari Home Screen Installation Modal */}
+      {showIOSModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+          <div className="bg-white border border-slate-300 rounded-2xl p-6 max-w-sm w-full shadow-2xl flex flex-col gap-4 font-sans text-slate-800">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+              <h3 className="font-mono text-sm font-bold text-slate-900 flex items-center gap-2">
+                <Smartphone className="w-4 h-4 text-indigo-600" />
+                Install on iPhone / iPad
+              </h3>
+              <button
+                onClick={() => setShowIOSModal(false)}
+                className="text-slate-400 hover:text-slate-600 p-1"
+                aria-label="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="text-xs text-slate-600 space-y-3">
+              <div className="flex items-start gap-2.5">
+                <span className="font-mono font-bold bg-slate-100 text-slate-800 w-5 h-5 rounded-full flex items-center justify-center shrink-0 text-[11px]">1</span>
+                <span>In Safari bottom toolbar, tap the <strong className="text-slate-900">Share</strong> icon <Share2 className="w-3.5 h-3.5 inline text-indigo-600" />.</span>
+              </div>
+              <div className="flex items-start gap-2.5">
+                <span className="font-mono font-bold bg-slate-100 text-slate-800 w-5 h-5 rounded-full flex items-center justify-center shrink-0 text-[11px]">2</span>
+                <span>Scroll down the action sheet and select <strong className="text-slate-900">Add to Home Screen</strong>.</span>
+              </div>
+              <div className="flex items-start gap-2.5">
+                <span className="font-mono font-bold bg-slate-100 text-slate-800 w-5 h-5 rounded-full flex items-center justify-center shrink-0 text-[11px]">3</span>
+                <span>Launch <strong className="text-slate-900">OctoRun</strong> from your home screen for full-screen offline gameplay with zero data connection!</span>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowIOSModal(false)}
+              className="w-full bg-slate-900 text-white font-mono text-xs font-semibold py-2.5 rounded-lg hover:bg-slate-800 transition-colors"
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Non-intrusive Offline Connectivity Indicator */}
+      {!isOnline && (
+        <div className="fixed top-3 left-1/2 -translate-x-1/2 z-40 bg-amber-500 text-white font-mono text-[11px] font-bold px-3 py-1 rounded-full shadow-md flex items-center gap-1.5 backdrop-blur-xs animate-in slide-in-from-top">
+          <WifiOff className="w-3.5 h-3.5" />
+          <span>Offline Mode (Cached)</span>
         </div>
       )}
     </div>
