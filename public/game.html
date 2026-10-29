@@ -273,22 +273,85 @@
       margin-bottom: 8px;
     }
 
+    .score-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      width: 100%;
+      margin-bottom: 12px;
+    }
+
+    .score-grid-item {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 10px 14px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 110px;
+    }
+
+    .score-grid-item.high-score-item {
+      background: #fffbeb;
+      border-color: #fde68a;
+    }
+
+    .score-grid-item.high-score-item.is-new-record {
+      border-color: #f59e0b;
+      background: #fef3c7;
+      box-shadow: 0 0 14px rgba(245, 158, 11, 0.28);
+    }
+
     .score-card-label {
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-      font-size: 11px;
+      font-size: 10px;
       font-weight: 700;
-      letter-spacing: 1px;
-      color: #6e7781;
+      letter-spacing: 0.8px;
+      color: #64748b;
       text-transform: uppercase;
-      margin-bottom: 4px;
+      margin-bottom: 2px;
+    }
+
+    .score-card-label.high-score-label {
+      color: #b45309;
     }
 
     .score-card-value {
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-      font-size: 36px;
+      font-size: 32px;
       font-weight: 800;
-      color: #1f2328;
+      color: #0f172a;
       letter-spacing: -0.5px;
+      line-height: 1.1;
+    }
+
+    .score-card-value.high-score-val {
+      color: #d97706;
+    }
+
+    .game-over-badge {
+      display: none;
+      width: 100%;
+      text-align: center;
+      background: #ecfdf5;
+      border: 1px solid #a7f3d0;
+      color: #047857;
+      font-family: ui-monospace, SFMono-Regular, monospace;
+      font-size: 11px;
+      font-weight: 700;
+      border-radius: 8px;
+      padding: 6px 10px;
+      box-sizing: border-box;
+      line-height: 1.4;
+    }
+
+    .game-over-badge.visible {
+      display: block;
+    }
+
+    .game-over-badge.is-record {
+      animation: pulse 1.5s infinite;
     }
 
     .game-over-title {
@@ -768,8 +831,21 @@
           <rect x="48" y="36" width="4" height="9" rx="2" fill="#181717" />
           <rect x="54" y="34" width="4" height="9" rx="2" fill="#181717" />
         </svg>
-        <div class="score-card-label">YOUR SCORE</div>
-        <div class="score-card-value" id="final-score-val">0</div>
+        <!-- Stats Comparison Grid -->
+        <div class="score-grid">
+          <div class="score-grid-item">
+            <div class="score-card-label">YOUR SCORE</div>
+            <div class="score-card-value" id="final-score-val">0</div>
+          </div>
+          <div class="score-grid-item high-score-item" id="final-best-box">
+            <div class="score-card-label high-score-label">🏆 HIGH SCORE</div>
+            <div class="score-card-value high-score-val" id="final-best-val">0</div>
+          </div>
+        </div>
+
+        <div id="game-over-badge" class="game-over-badge">
+          <span id="game-over-badge-text">★ NEW HIGH SCORE! ★</span>
+        </div>
       </div>
 
       <div class="game-over-title">GAME OVER</div>
@@ -1243,12 +1319,7 @@
         mBtnExit.addEventListener('click', () => {
           sounds.init();
           if (!isGameOver) {
-            lives = 0;
-            isGameOver = true;
-            renderHearts();
-            finalScoreVal.textContent = score;
-            gameOverModal.classList.add('visible');
-            sounds.playGameOver();
+            triggerGameOver();
           } else {
             initGame();
           }
@@ -1257,7 +1328,12 @@
 
       // --- GAME STATE ---
       let score = 0;
-      let highScore = parseInt(localStorage.getItem('octo_game_high_score') || '0', 10);
+      let highScore = 0;
+      try {
+        highScore = parseInt(localStorage.getItem('octo_game_high_score') || '0', 10);
+      } catch (_) {
+        highScore = 0;
+      }
       let lives = MAX_LIVES;
       let isGameOver = false;
       let screenShake = 0;
@@ -1499,6 +1575,10 @@
         activePointers.clear();
         updateEdgeHoldState();
         gameOverModal.classList.remove('visible');
+        const finalBestBox = document.getElementById('final-best-box');
+        if (finalBestBox) finalBestBox.classList.remove('is-new-record');
+        const gameOverBadge = document.getElementById('game-over-badge');
+        if (gameOverBadge) gameOverBadge.className = 'game-over-badge';
         hudScore.textContent = '0';
         renderHearts();
         resetPlayer();
@@ -1627,20 +1707,57 @@
       }
 
       function triggerGameOver() {
+        if (isGameOver) return;
         isGameOver = true;
         sounds.playGameOver();
         finalScoreVal.textContent = score;
 
-        if (score > highScore) {
+        const prevBest = highScore;
+        const isNewRecord = score > highScore;
+
+        if (isNewRecord) {
           highScore = score;
-          localStorage.setItem('octo_game_high_score', highScore);
+          try {
+            localStorage.setItem('octo_game_high_score', String(highScore));
+          } catch (_) {}
           hudHighScore.textContent = highScore;
           if (hudMobileHiVal) hudMobileHiVal.textContent = highScore;
         }
 
+        const finalBestVal = document.getElementById('final-best-val');
+        const finalBestBox = document.getElementById('final-best-box');
+        const gameOverBadge = document.getElementById('game-over-badge');
+        const gameOverBadgeText = document.getElementById('game-over-badge-text');
+
+        if (finalBestVal) {
+          finalBestVal.textContent = highScore;
+        }
+
+        if (gameOverBadge && gameOverBadgeText) {
+          if (isNewRecord && score > 0) {
+            if (finalBestBox) finalBestBox.classList.add('is-new-record');
+            gameOverBadge.className = 'game-over-badge visible is-record';
+            gameOverBadge.style.background = '#ecfdf5';
+            gameOverBadge.style.borderColor = '#a7f3d0';
+            gameOverBadge.style.color = '#047857';
+            gameOverBadgeText.innerHTML = `★ NEW HIGH SCORE! ★<br><span style="font-size:10px; font-weight:600; opacity:0.9;">Beat previous record of ${prevBest} (+${score - prevBest} pts)</span>`;
+          } else {
+            if (finalBestBox) finalBestBox.classList.remove('is-new-record');
+            if (highScore > score) {
+              gameOverBadge.className = 'game-over-badge visible';
+              gameOverBadge.style.background = '#f1f5f9';
+              gameOverBadge.style.borderColor = '#cbd5e1';
+              gameOverBadge.style.color = '#475569';
+              gameOverBadgeText.textContent = `All-time best: ${highScore} (${highScore - score} pts to beat)`;
+            } else {
+              gameOverBadge.className = 'game-over-badge';
+            }
+          }
+        }
+
         setTimeout(() => {
           gameOverModal.classList.add('visible');
-        }, 500);
+        }, 350);
       }
 
       exitBtn.addEventListener('click', () => {

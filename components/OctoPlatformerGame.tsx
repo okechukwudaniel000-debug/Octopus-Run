@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Volume2, VolumeX, Maximize2, Minimize2, RefreshCw } from 'lucide-react';
+import { Volume2, VolumeX, Maximize2, Minimize2, RefreshCw, Trophy } from 'lucide-react';
 
 interface FloatingText {
   text: string;
@@ -86,11 +86,17 @@ export default function OctoPlatformerGame({
   const [score, setScore] = useState<number>(0);
   const [highScore, setHighScore] = useState<number>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('octo_game_high_score');
-      return saved ? parseInt(saved, 10) : 0;
+      try {
+        const saved = localStorage.getItem('octo_game_high_score');
+        return saved ? parseInt(saved, 10) : 0;
+      } catch (_) {
+        return 0;
+      }
     }
     return 0;
   });
+  const [isNewRecord, setIsNewRecord] = useState<boolean>(false);
+  const [previousBest, setPreviousBest] = useState<number>(0);
   const [lives, setLives] = useState<number>(3);
   const [isGameOver, setIsGameOver] = useState<boolean>(false);
   const [finalScore, setFinalScore] = useState<number>(0);
@@ -568,9 +574,32 @@ export default function OctoPlatformerGame({
     setIsGameOver(false);
     setIsRainbowActive(false);
     setIsMagnetActive(false);
+    setIsNewRecord(false);
+    setPreviousBest(0);
 
     buildInitialWorld();
   }, [buildInitialWorld]);
+
+  const triggerGameOver = useCallback((currentScore: number) => {
+    const state = gameStateRef.current;
+    state.isGameOver = true;
+    state.lives = 0;
+    setLives(0);
+    setFinalScore(currentScore);
+    setIsGameOver(true);
+    playSound('gameover');
+
+    setHighScore((prev) => {
+      const isNew = currentScore > prev;
+      setIsNewRecord(isNew);
+      setPreviousBest(prev);
+      const nh = Math.max(prev, currentScore);
+      try {
+        localStorage.setItem('octo_game_high_score', String(nh));
+      } catch (_) {}
+      return nh;
+    });
+  }, [playSound]);
 
   const triggerStart = useCallback(() => {
     if (!gameStateRef.current.gameStarted) {
@@ -1200,15 +1229,7 @@ export default function OctoPlatformerGame({
               // Cancel jump and knockback: do not set state.player.vy or knockback state.player.vx
 
               if (state.lives <= 0) {
-                state.isGameOver = true;
-                setFinalScore(state.score);
-                setIsGameOver(true);
-                playSound('gameover');
-                setHighScore((prev) => {
-                  const nh = Math.max(prev, state.score);
-                  localStorage.setItem('octo_game_high_score', String(nh));
-                  return nh;
-                });
+                triggerGameOver(state.score);
               }
             }
           }
@@ -1801,7 +1822,7 @@ export default function OctoPlatformerGame({
       cancelAnimationFrame(animId);
       window.removeEventListener('resize', resize);
     };
-  }, [generateChunk, playSound, resetGame, spawnCollectSparks]);
+  }, [generateChunk, playSound, resetGame, spawnCollectSparks, triggerGameOver]);
 
   return (
     <div
@@ -2004,12 +2025,7 @@ export default function OctoPlatformerGame({
               onClick={() => {
                 initAudio();
                 if (!isGameOver) {
-                  gameStateRef.current.lives = 0;
-                  setLives(0);
-                  gameStateRef.current.isGameOver = true;
-                  setFinalScore(gameStateRef.current.score);
-                  setIsGameOver(true);
-                  playSound('gameover');
+                  triggerGameOver(gameStateRef.current.score);
                 } else {
                   resetGame();
                 }
@@ -2032,12 +2048,7 @@ export default function OctoPlatformerGame({
               onClick={() => {
                 initAudio();
                 if (!isGameOver) {
-                  gameStateRef.current.lives = 0;
-                  setLives(0);
-                  gameStateRef.current.isGameOver = true;
-                  setFinalScore(gameStateRef.current.score);
-                  setIsGameOver(true);
-                  playSound('gameover');
+                  triggerGameOver(gameStateRef.current.score);
                 } else {
                   resetGame();
                 }
@@ -2082,9 +2093,9 @@ export default function OctoPlatformerGame({
 
       {/* Game Over Screen Modal */}
       {isGameOver && (
-        <div className="absolute inset-0 bg-[#f4f4f4]/80 backdrop-blur-xs flex flex-col items-center justify-center z-30 animate-in fade-in duration-300">
-          <div className="bg-white border border-slate-300 rounded-2xl p-6 sm:p-8 text-center shadow-xl mb-6 flex flex-col items-center min-w-[240px] transform transition-transform animate-in zoom-in-95 duration-200">
-            <svg className="w-16 h-12 mb-2" viewBox="0 0 80 50">
+        <div className="absolute inset-0 bg-[#f4f4f4]/85 backdrop-blur-xs flex flex-col items-center justify-center z-30 animate-in fade-in duration-300 p-4">
+          <div className="bg-white border border-slate-300 rounded-2xl p-6 sm:p-8 text-center shadow-2xl mb-5 flex flex-col items-center min-w-[280px] sm:min-w-[340px] max-w-sm w-full transform transition-transform animate-in zoom-in-95 duration-200">
+            <svg className="w-16 h-12 mb-3" viewBox="0 0 80 50">
               <rect x="18" y="4" width="22" height="6" fill="#ec4899" rx="2" />
               <rect x="16" y="10" width="26" height="6" fill="#8b5cf6" rx="2" />
               <rect x="15" y="16" width="28" height="6" fill="#3b82f6" rx="2" />
@@ -2102,21 +2113,60 @@ export default function OctoPlatformerGame({
               <rect x="54" y="34" width="4" height="9" rx="2" fill="#181717" />
             </svg>
 
-            <span className="font-mono text-xs font-bold tracking-widest text-slate-500 uppercase mb-1">
-              YOUR SCORE
-            </span>
-            <span className="font-mono text-4xl sm:text-5xl font-black text-slate-900 tracking-tight">
-              {finalScore}
-            </span>
+            {/* Score Comparison Grid */}
+            <div className="w-full grid grid-cols-2 gap-3 mb-3">
+              {/* Current Run Score */}
+              <div className="flex flex-col items-center bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3">
+                <span className="font-mono text-[10px] sm:text-xs font-bold tracking-wider text-slate-500 uppercase mb-0.5">
+                  YOUR SCORE
+                </span>
+                <span className="font-mono text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
+                  {finalScore}
+                </span>
+              </div>
 
-            {finalScore > 0 && finalScore >= highScore && (
-              <span className="mt-2 text-xs font-mono font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">
-                ★ NEW HIGH SCORE! ★
-              </span>
+              {/* Best High Score */}
+              <div className={`flex flex-col items-center rounded-xl py-2.5 px-3 border transition-colors ${
+                isNewRecord
+                  ? 'bg-amber-50/80 border-amber-300'
+                  : 'bg-slate-50 border-slate-200'
+              }`}>
+                <span className="font-mono text-[10px] sm:text-xs font-bold tracking-wider text-amber-700 uppercase mb-0.5 flex items-center gap-1">
+                  <Trophy className="w-3.5 h-3.5 text-amber-500" />
+                  <span>HIGH SCORE</span>
+                </span>
+                <span className={`font-mono text-3xl sm:text-4xl font-black tracking-tight ${
+                  isNewRecord ? 'text-amber-600' : 'text-slate-900'
+                }`}>
+                  {highScore}
+                </span>
+              </div>
+            </div>
+
+            {/* High Score Celebration / Status Badge */}
+            {isNewRecord && finalScore > 0 ? (
+              <div className="w-full flex flex-col items-center gap-1 bg-emerald-50 border border-emerald-200 rounded-lg py-1.5 px-3 mb-1 animate-pulse">
+                <span className="text-xs font-mono font-bold text-emerald-700 flex items-center gap-1">
+                  <span>★</span> NEW HIGH SCORE! <span>★</span>
+                </span>
+                {previousBest > 0 && (
+                  <span className="text-[11px] font-mono text-emerald-600">
+                    Beat previous record of {previousBest} (+{finalScore - previousBest} pts)
+                  </span>
+                )}
+              </div>
+            ) : (
+              <div className="w-full flex items-center justify-center gap-1.5 text-xs font-mono text-slate-500 py-1">
+                <span>Record to beat:</span>
+                <strong className="text-slate-800 font-bold">{highScore}</strong>
+                {highScore > finalScore && (
+                  <span className="text-slate-400">({highScore - finalScore} pts away)</span>
+                )}
+              </div>
             )}
           </div>
 
-          <h2 className="font-mono text-4xl sm:text-6xl font-black text-slate-700 tracking-[0.25em] sm:tracking-[0.35em] uppercase mb-8 drop-shadow-xs select-none">
+          <h2 className="font-mono text-3xl sm:text-5xl font-black text-slate-700 tracking-[0.2em] sm:tracking-[0.3em] uppercase mb-6 drop-shadow-xs select-none">
             GAME OVER
           </h2>
 
