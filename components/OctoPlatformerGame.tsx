@@ -79,6 +79,7 @@ export default function OctoPlatformerGame() {
   const rainbowTextRef = useRef<HTMLSpanElement | null>(null);
   const magnetBarRef = useRef<HTMLDivElement | null>(null);
   const magnetTextRef = useRef<HTMLSpanElement | null>(null);
+  const scoreRef = useRef<HTMLSpanElement | null>(null);
 
   const [score, setScore] = useState<number>(0);
   const [highScore, setHighScore] = useState<number>(() => {
@@ -295,6 +296,8 @@ export default function OctoPlatformerGame() {
   const gameStateRef = useRef({
     gameStarted: false,
     score: 0,
+    maxDistanceX: 160,
+    distanceAccumulator: 0,
     lives: 3,
     isGameOver: false,
     screenShake: 0,
@@ -574,12 +577,18 @@ export default function OctoPlatformerGame() {
     setHoldingRight(false);
 
     setScore(0);
+    if (scoreRef.current) {
+      scoreRef.current.textContent = '0';
+    }
     setLives(3);
     setIsGameOver(false);
     setIsRainbowActive(false);
     setIsMagnetActive(false);
     setIsNewRecord(false);
     setPreviousBest(0);
+
+    state.maxDistanceX = state.player.x;
+    state.distanceAccumulator = 0;
 
     buildInitialWorld();
   }, [buildInitialWorld]);
@@ -589,6 +598,10 @@ export default function OctoPlatformerGame() {
     state.isGameOver = true;
     state.lives = 0;
     setLives(0);
+    setScore(currentScore);
+    if (scoreRef.current) {
+      scoreRef.current.textContent = String(currentScore);
+    }
     setFinalScore(currentScore);
     setIsGameOver(true);
     playSound('gameover');
@@ -608,6 +621,8 @@ export default function OctoPlatformerGame() {
   const triggerStart = useCallback(() => {
     if (!gameStateRef.current.gameStarted) {
       gameStateRef.current.gameStarted = true;
+      gameStateRef.current.maxDistanceX = gameStateRef.current.player.x;
+      gameStateRef.current.distanceAccumulator = 0;
     }
   }, []);
 
@@ -1077,6 +1092,22 @@ export default function OctoPlatformerGame() {
               } else if (state.player.vx < 0) {
                 state.player.x = p.x + p.w;
               }
+            }
+          }
+        }
+
+        // Distance covered added to score while running
+        if (state.gameStarted && !state.isGameOver) {
+          if (state.player.x > state.maxDistanceX) {
+            const deltaDist = state.player.x - state.maxDistanceX;
+            state.maxDistanceX = state.player.x;
+            state.distanceAccumulator += deltaDist;
+
+            // Every 10 pixels of new forward ground covered adds 1 point to score
+            if (state.distanceAccumulator >= 10) {
+              const distancePoints = Math.floor(state.distanceAccumulator / 10);
+              state.distanceAccumulator %= 10;
+              state.score += distancePoints;
             }
           }
         }
@@ -1817,6 +1848,13 @@ export default function OctoPlatformerGame() {
       ctx.restore(); // Camera
       ctx.restore(); // Shake
 
+      if (scoreRef.current) {
+        scoreRef.current.textContent = String(state.score);
+      }
+      if (state.frameCount % 8 === 0) {
+        setScore(state.score);
+      }
+
       animId = requestAnimationFrame(loop);
     };
 
@@ -1989,7 +2027,7 @@ export default function OctoPlatformerGame() {
             <div className="font-mono text-xs sm:text-sm md:text-base font-semibold text-slate-900 bg-white/80 backdrop-blur-xs px-2.5 sm:px-3 py-1 rounded border border-slate-300 shadow-xs whitespace-nowrap shrink-0">
               <span className="hidden sm:inline">Your score: </span>
               <span className="sm:hidden font-medium text-slate-600">Score: </span>
-              <span className="font-bold">{score}</span>
+              <span ref={scoreRef} className="font-bold">{score}</span>
             </div>
 
 

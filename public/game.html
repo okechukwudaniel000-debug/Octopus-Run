@@ -1335,6 +1335,8 @@
       function triggerGameStart() {
         if (!gameStarted) {
           gameStarted = true;
+          maxDistanceX = player.x;
+          distanceAccumulator = 0;
         }
       }
 
@@ -1493,6 +1495,8 @@
 
       // --- GAME STATE ---
       let score = 0;
+      let maxDistanceX = 160;
+      let distanceAccumulator = 0;
       let highScore = 0;
       try {
         highScore = parseInt(localStorage.getItem('octo_game_high_score') || '0', 10);
@@ -1747,6 +1751,8 @@
         hudScore.textContent = '0';
         renderHearts();
         resetPlayer();
+        maxDistanceX = player.x;
+        distanceAccumulator = 0;
         buildInitialWorld();
       }
 
@@ -2480,6 +2486,22 @@
               } else if (player.vx < 0) {
                 player.x = p.x + p.w;
               }
+            }
+          }
+        }
+
+        // Distance covered added to score while running
+        if (gameStarted && !isGameOver) {
+          if (player.x > maxDistanceX) {
+            const deltaDist = player.x - maxDistanceX;
+            maxDistanceX = player.x;
+            distanceAccumulator += deltaDist;
+
+            if (distanceAccumulator >= 10) {
+              const distancePoints = Math.floor(distanceAccumulator / 10);
+              distanceAccumulator %= 10;
+              score += distancePoints;
+              hudScore.textContent = score;
             }
           }
         }
