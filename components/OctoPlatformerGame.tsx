@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Volume2, VolumeX, Maximize2, Minimize2, RefreshCw, Trophy, Download, Smartphone, Share2, WifiOff, Check, X, FileCode } from 'lucide-react';
+import { Volume2, VolumeX, Maximize2, Minimize2, RefreshCw, Trophy, Smartphone, Share2, WifiOff, X, FileCode } from 'lucide-react';
 import { usePWAInstall } from './usePWAInstall';
 
 interface FloatingText {
@@ -118,10 +118,7 @@ export default function OctoPlatformerGame({
     isInstalled,
     isIOS,
     isOnline,
-    isExporting,
-    exportSuccess,
     install,
-    exportOfflineHtml,
   } = usePWAInstall();
   const [showIOSModal, setShowIOSModal] = useState<boolean>(false);
 
@@ -1999,26 +1996,6 @@ export default function OctoPlatformerGame({
               <span className="font-bold">{score}</span>
             </div>
 
-            {/* Export Offline Game (.html) Button */}
-            <button
-              onClick={exportOfflineHtml}
-              disabled={isExporting}
-              title="Export standalone offline game (.html) - No internet needed"
-              aria-label="Export offline game"
-              className="bg-white border border-slate-300 hover:border-slate-400 active:bg-slate-100 rounded-md px-2 sm:px-2.5 py-1.5 text-slate-800 shadow-xs transition-colors shrink-0 flex items-center gap-1.5 font-mono text-xs font-semibold"
-            >
-              {exportSuccess ? (
-                <>
-                  <Check className="w-3.5 h-3.5 text-emerald-600" />
-                  <span className="hidden sm:inline text-emerald-700">Exported</span>
-                </>
-              ) : (
-                <>
-                  <Download className={`w-3.5 h-3.5 ${isExporting ? 'animate-bounce text-indigo-600' : 'text-slate-600'}`} />
-                  <span className="hidden sm:inline">Export</span>
-                </>
-              )}
-            </button>
 
             {/* Install App Button (Hidden when running as standalone PWA) */}
             {!isInstalled && (
