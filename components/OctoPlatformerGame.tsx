@@ -2187,36 +2187,22 @@ export default function OctoPlatformerGame() {
               </div>
             )}
 
-            {/* Standalone Mobile / Offline Export Box */}
-            <div className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 mt-3 flex flex-col gap-2 text-left">
-              <div className="flex items-center justify-between">
-                <span className="font-mono text-[11px] font-bold text-slate-800 flex items-center gap-1.5">
-                  <Smartphone className="w-3.5 h-3.5 text-indigo-600" />
-                  STANDALONE OFFLINE APP
-                </span>
-                <span className="text-[10px] font-mono text-emerald-700 font-semibold bg-emerald-100/70 border border-emerald-300 px-1.5 py-0.5 rounded">
-                  NO DATA NEEDED
-                </span>
+            {/* Standalone Mobile App Install Option */}
+            {!isInstalled && (
+              <div className="w-full mt-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (isIOS) setShowIOSModal(true);
+                    else install();
+                  }}
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-mono text-xs font-semibold py-2.5 px-3 rounded-lg shadow-xs transition-colors flex items-center justify-center gap-1.5"
+                >
+                  <Smartphone className="w-3.5 h-3.5" />
+                  <span>Install App</span>
+                </button>
               </div>
-              <p className="text-[11px] text-slate-500 font-sans leading-tight">
-                Play on mobile or desktop without an active internet connection.
-              </p>
-              <div className="flex gap-2 pt-1">
-                {!isInstalled && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (isIOS) setShowIOSModal(true);
-                      else install();
-                    }}
-                    className="w-full bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-mono text-xs font-semibold py-2 px-2.5 rounded-lg shadow-xs transition-colors flex items-center justify-center gap-1.5"
-                  >
-                    <Smartphone className="w-3.5 h-3.5" />
-                    <span>Install App</span>
-                  </button>
-                )}
-              </div>
-            </div>
+            )}
           </div>
 
           <h2 className="font-mono text-3xl sm:text-5xl font-black text-slate-700 tracking-[0.2em] sm:tracking-[0.3em] uppercase mb-6 drop-shadow-xs select-none">
