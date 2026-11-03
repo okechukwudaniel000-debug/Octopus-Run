@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Volume2, VolumeX, Maximize2, Minimize2, RefreshCw, Trophy, Smartphone, Share2, WifiOff, X, FileCode } from 'lucide-react';
+import { Volume2, VolumeX, Maximize2, Minimize2, RefreshCw, Trophy, Smartphone, Share2, WifiOff, X } from 'lucide-react';
 import { usePWAInstall } from './usePWAInstall';
 
 interface FloatingText {
@@ -71,11 +71,7 @@ const MAX_JUMPS = 2;      // Allow jumping up to 2 times before hitting ground (
 const RAINBOW_DURATION = 60 * 15; // 15 seconds at 60 FPS
 const MAGNET_DURATION = 60 * 8;   // 8 seconds at 60 FPS
 
-export default function OctoPlatformerGame({
-  onOpenCodeViewer,
-}: {
-  onOpenCodeViewer?: () => void;
-}) {
+export default function OctoPlatformerGame() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -2013,17 +2009,6 @@ export default function OctoPlatformerGame({
               </button>
             )}
 
-            {/* View Standalone Source Button */}
-            {onOpenCodeViewer && (
-              <button
-                onClick={onOpenCodeViewer}
-                title="View Standalone Game Source"
-                aria-label="View Standalone Game Source"
-                className="bg-white border border-slate-300 hover:border-slate-400 active:bg-slate-100 rounded-md p-1.5 text-slate-800 shadow-xs transition-colors shrink-0"
-              >
-                <FileCode className="w-4 h-4 text-slate-600" />
-              </button>
-            )}
 
             {/* Mute Button */}
             <button

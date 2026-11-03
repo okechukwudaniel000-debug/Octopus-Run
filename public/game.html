@@ -2909,40 +2909,10 @@
         render();
         requestAnimationFrame(gameLoop);
       }
-      // --- STANDALONE OFFLINE EXPORT & PWA INSTALL ENGINE ---
-      const topExportBtn = document.getElementById('top-export-btn');
-      const modalExportBtn = document.getElementById('modal-export-btn');
+      // --- STANDALONE OFFLINE PWA INSTALL ENGINE ---
       const topInstallBtn = document.getElementById('top-install-btn');
       const modalInstallBtn = document.getElementById('modal-install-btn');
       const offlineStatusPill = document.getElementById('offline-status-pill');
-      const exportLabel = document.getElementById('export-label');
-
-      function exportStandalonePackage() {
-        try {
-          const htmlContent = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
-          const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = 'OctoRun-Offline.html';
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-
-          if (exportLabel) exportLabel.textContent = 'Saved!';
-          if (modalExportBtn) modalExportBtn.textContent = 'Saved!';
-          setTimeout(() => {
-            if (exportLabel) exportLabel.textContent = 'Export';
-            if (modalExportBtn) modalExportBtn.textContent = 'Export .html';
-          }, 3000);
-        } catch (e) {
-          console.error('Offline export error:', e);
-        }
-      }
-
-      if (topExportBtn) topExportBtn.addEventListener('click', exportStandalonePackage);
-      if (modalExportBtn) modalExportBtn.addEventListener('click', exportStandalonePackage);
 
       // PWA Install Prompt handling
       let pwaPrompt = null;

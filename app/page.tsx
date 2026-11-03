@@ -1,8 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import dynamic from 'next/dynamic';
-import CodeViewerModal from '@/components/CodeViewerModal';
 
 // Load OctoPlatformerGame client-side only to avoid SSR canvas/window hydration mismatches
 const OctoPlatformerGame = dynamic(() => import('@/components/OctoPlatformerGame'), {
@@ -16,16 +15,9 @@ const OctoPlatformerGame = dynamic(() => import('@/components/OctoPlatformerGame
 });
 
 export default function HomePage() {
-  const [isCodeModalOpen, setIsCodeModalOpen] = useState(false);
-
   return (
     <main className="w-screen h-screen overflow-hidden bg-[#f4f4f4] relative">
-      <OctoPlatformerGame onOpenCodeViewer={() => setIsCodeModalOpen(true)} />
-
-      <CodeViewerModal
-        isOpen={isCodeModalOpen}
-        onClose={() => setIsCodeModalOpen(false)}
-      />
+      <OctoPlatformerGame />
     </main>
   );
 }
