@@ -2247,30 +2247,12 @@ export default function OctoPlatformerGame({
                       if (isIOS) setShowIOSModal(true);
                       else install();
                     }}
-                    className="flex-1 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-mono text-xs font-semibold py-2 px-2.5 rounded-lg shadow-xs transition-colors flex items-center justify-center gap-1.5"
+                    className="w-full bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-mono text-xs font-semibold py-2 px-2.5 rounded-lg shadow-xs transition-colors flex items-center justify-center gap-1.5"
                   >
                     <Smartphone className="w-3.5 h-3.5" />
                     <span>Install App</span>
                   </button>
                 )}
-                <button
-                  type="button"
-                  onClick={exportOfflineHtml}
-                  disabled={isExporting}
-                  className="flex-1 bg-white border border-slate-300 hover:border-slate-400 active:bg-slate-100 text-slate-800 font-mono text-xs font-semibold py-2 px-2.5 rounded-lg shadow-xs transition-colors flex items-center justify-center gap-1.5"
-                >
-                  {exportSuccess ? (
-                    <>
-                      <Check className="w-3.5 h-3.5 text-emerald-600" />
-                      <span className="text-emerald-700">Exported!</span>
-                    </>
-                  ) : (
-                    <>
-                      <Download className="w-3.5 h-3.5 text-slate-600" />
-                      <span>Export .html</span>
-                    </>
-                  )}
-                </button>
               </div>
             </div>
           </div>
